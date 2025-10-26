@@ -42,7 +42,7 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge }) => {
     <Link to={`/challenges/${challenge.slug}`}>
       <Card padding={false} hover className="overflow-hidden h-full">
         {/* Image */}
-        <div className="relative h-48 bg-gradient-to-r from-primary-400 to-secondary-400">
+        <div className="relative h-48 bg-primary-600">
           {challenge.image ? (
             <img
               src={getImageUrl(challenge.image)}
@@ -57,9 +57,17 @@ export const ChallengeCard: React.FC<ChallengeCardProps> = ({ challenge }) => {
           <div className="absolute top-3 right-3">
             {getStatusBadge()}
           </div>
-          {challenge.is_full && (
+          {challenge.is_full && !challenge.joined && (
             <div className="absolute top-3 left-3">
               <Badge variant="danger">Набор закрыт</Badge>
+            </div>
+          )}
+          {challenge.joined && (
+            <div className="absolute top-3 left-3">
+              <Badge variant="info" className="flex items-center space-x-1">
+                <Users className="w-3 h-3" />
+                <span>Участвуете</span>
+              </Badge>
             </div>
           )}
         </div>

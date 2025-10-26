@@ -1,22 +1,19 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, User, LogOut, Menu, X, Plus } from 'lucide-react';
-import { useAuthStore } from '@/store/authStore';
+import { Trophy, Menu, X, LogOut, User } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
-import { getInitials, getAvatarUrl } from '@/lib/utils';
+import { useAuthStore } from '@/stores/authStore';
 
 export const Header: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-  const { user, isAuthenticated, logout, isLoading } = useAuthStore();
   const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuthStore();
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/');
+    setIsMenuOpen(false);
   };
-
-  // Don't render user info until loaded
-  const showUserInfo = isAuthenticated && user && !isLoading;
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200">
@@ -38,80 +35,28 @@ export const Header: React.FC = () => {
             >
               Челленджи
             </Link>
-            <Link
-              to="/achievements"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              Достижения
-            </Link>
-            <Link
-              to="/leaderboard"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              Рейтинг
-            </Link>
-
-            {showUserInfo ? (
-              <>
+            
+            {isAuthenticated ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-gray-700 font-medium">
+                  Привет, {user?.username}!
+                </span>
                 <Button
-                  variant="primary"
+                  variant="outline"
                   size="sm"
-                  onClick={() => navigate('/challenges/create')}
+                  onClick={handleLogout}
                   className="flex items-center space-x-1"
                 >
-                  <Plus className="w-4 h-4" />
-                  <span>Создать</span>
+                  <LogOut className="w-4 h-4" />
+                  <span>Выйти</span>
                 </Button>
-
-                <div className="flex items-center space-x-4">
-                  <Link
-                    to="/profile"
-                    className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 transition-colors"
-                  >
-                    {user.profile?.avatar ? (
-                      <img
-                        src={getAvatarUrl(user.profile.avatar)}
-                        alt={user.username}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center text-sm font-medium">
-                        {getInitials(user.first_name, user.last_name, user.username)}
-                      </div>
-                    )}
-                    <span className="font-medium">{user.username}</span>
-                  </Link>
-
-                  <button
-                    onClick={handleLogout}
-                    className="text-gray-700 hover:text-red-600 transition-colors"
-                    title="Выйти"
-                  >
-                    <LogOut className="w-5 h-5" />
-                  </button>
-                </div>
-              </>
-            ) : isLoading ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-600"></div>
               </div>
             ) : (
-              <div className="flex items-center space-x-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => navigate('/login')}
-                >
+              <Link to="/login">
+                <Button variant="primary" size="sm">
                   Войти
                 </Button>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => navigate('/register')}
-                >
-                  Регистрация
-                </Button>
-              </div>
+              </Link>
             )}
           </div>
 
@@ -135,64 +80,31 @@ export const Header: React.FC = () => {
               >
                 Челленджи
               </Link>
-              <Link
-                to="/achievements"
-                className="text-gray-700 hover:text-primary-600 font-medium py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Достижения
-              </Link>
-              <Link
-                to="/leaderboard"
-                className="text-gray-700 hover:text-primary-600 font-medium py-2"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Рейтинг
-              </Link>
-
-              {showUserInfo ? (
+              
+              {isAuthenticated ? (
                 <>
-                  <Link
-                    to="/challenges/create"
-                    className="text-gray-700 hover:text-primary-600 font-medium py-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Создать челлендж
-                  </Link>
-                  <Link
-                    to="/profile"
-                    className="text-gray-700 hover:text-primary-600 font-medium py-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Профиль
-                  </Link>
+                  <div className="flex items-center space-x-2 py-2">
+                    <User className="w-4 h-4 text-gray-500" />
+                    <span className="text-gray-700 font-medium">
+                      {user?.username}
+                    </span>
+                  </div>
                   <button
-                    onClick={() => {
-                      handleLogout();
-                      setIsMenuOpen(false);
-                    }}
-                    className="text-red-600 font-medium py-2 text-left"
+                    onClick={handleLogout}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 font-medium py-2"
                   >
-                    Выйти
+                    <LogOut className="w-4 h-4" />
+                    <span>Выйти</span>
                   </button>
                 </>
               ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="text-gray-700 hover:text-primary-600 font-medium py-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Войти
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="text-primary-600 font-medium py-2"
-                    onClick={() => setIsMenuOpen(false)}
-                  >
-                    Регистрация
-                  </Link>
-                </>
+                <Link
+                  to="/login"
+                  className="text-gray-700 hover:text-primary-600 font-medium py-2"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Войти
+                </Link>
               )}
             </div>
           </div>
