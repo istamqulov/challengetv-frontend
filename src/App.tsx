@@ -65,9 +65,7 @@ function App() {
             path="/challenges/:slug"
             element={
               <Layout>
-                <ProtectedRoute>
-                  <ChallengeDetailPage />
-                </ProtectedRoute>
+                <ChallengeDetailPage />
               </Layout>
             }
           />

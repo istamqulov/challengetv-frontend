@@ -18,6 +18,7 @@ import { Loading } from '@/components/ui/Loading';
 import { ParticipantsTab } from '@/components/challenges/ParticipantsTab';
 import { MyProgressTab } from '@/components/challenges/MyProgressTab';
 import { SendProgressTab } from '@/components/challenges/SendProgressTab';
+import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
 import type { Challenge, Participant } from '@/types/api';
 import {
@@ -33,6 +34,7 @@ import {
 export const ChallengeDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuthStore();
 
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -47,6 +49,13 @@ export const ChallengeDetailPage: React.FC = () => {
     }
   }, [slug]);
 
+  // Reset active tab if user is not authenticated and tries to access auth-only tabs
+  useEffect(() => {
+    if (!isAuthenticated && (activeTab === 'progress' || activeTab === 'send')) {
+      setActiveTab('info');
+    }
+  }, [isAuthenticated, activeTab]);
+
   const loadChallengeData = async () => {
     if (!slug) return;
 
@@ -57,7 +66,7 @@ export const ChallengeDetailPage: React.FC = () => {
     try {
       const [challengeData, participantsData] = await Promise.all([
         apiClient.getChallenge(slug),
-        apiClient.getChallengeParticipants(slug).catch((err) => {
+        apiClient.getChallengeParticipants(slug).catch((err: any) => {
           console.error('Error loading participants:', err);
           return [];
         }),
@@ -228,8 +237,10 @@ export const ChallengeDetailPage: React.FC = () => {
               {[
                 { id: 'info', label: 'Информация', icon: Trophy, shortLabel: 'Инфо' },
                 { id: 'participants', label: 'Участники', icon: Users, shortLabel: 'Участники' },
-                { id: 'progress', label: 'Мой прогресс', icon: Target, shortLabel: 'Прогресс' },
-                { id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' },
+                ...(isAuthenticated ? [
+                  { id: 'progress', label: 'Мой прогресс', icon: Target, shortLabel: 'Прогресс' },
+                  { id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' },
+                ] : []),
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -429,9 +440,9 @@ export const ChallengeDetailPage: React.FC = () => {
             />
           )}
 
-          {activeTab === 'progress' && <MyProgressTab />}
+          {activeTab === 'progress' && isAuthenticated && <MyProgressTab />}
 
-          {activeTab === 'send' && <SendProgressTab />}
+          {activeTab === 'send' && isAuthenticated && <SendProgressTab />}
         </div>
       </div>
     </div>
