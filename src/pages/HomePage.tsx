@@ -1,12 +1,69 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, TrendingUp, Award } from 'lucide-react';
+import { Trophy, TrendingUp, Award, Calendar, Users, Clock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { apiClient } from '@/lib/api';
+import type { ChallengeList } from '@/types/api';
+import {
+  formatDate,
+  getDaysUntil,
+  getChallengeStatusText,
+  getImageUrl,
+  isChallengeActive,
+  isChallengeUpcoming,
+} from '@/lib/utils';
 
 export const HomePage: React.FC = () => {
+  const [challenges, setChallenges] = useState<ChallengeList[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadChallenges();
+  }, []);
+
+  const loadChallenges = async () => {
+    try {
+      setIsLoading(true);
+      console.log('Loading challenges...');
+      const response = await apiClient.getChallenges();
+      console.log('Challenges response:', response);
+      
+      // Извлекаем массив челленджей из пагинированного ответа
+      const challengesData = response.results || [];
+      console.log('Challenges array:', challengesData);
+      
+      // Показываем только первые 6 челленджей на главной странице
+      setChallenges(challengesData.slice(0, 6));
+    } catch (error) {
+      console.error('Error loading challenges:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getStatusBadge = (challenge: ChallengeList) => {
+    const isActive = isChallengeActive(challenge.start_date, challenge.end_date);
+    const isUpcoming = isChallengeUpcoming(challenge.start_date);
+    
+    if (challenge.status === 'active' && isActive) {
+      return <Badge variant="success">Активен</Badge>;
+    }
+    if (challenge.status === 'active' && isUpcoming) {
+      return <Badge variant="info">Скоро начнется</Badge>;
+    }
+    if (challenge.status === 'completed') {
+      return <Badge variant="default">Завершен</Badge>;
+    }
+    if (challenge.status === 'cancelled') {
+      return <Badge variant="danger">Отменен</Badge>;
+    }
+    return <Badge variant="warning">{getChallengeStatusText(challenge.status)}</Badge>;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
       <section className="bg-primary-600 text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -74,22 +131,170 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 bg-primary-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl font-bold mb-4">
-            Готовы начать свой путь?
-          </h2>
-          <p className="text-xl mb-8">
-            Присоединяйтесь к ChallengeTV и начните достигать своих целей уже сегодня!
-          </p>
-          <Link to="/challenges">
-            <Button size="lg" variant="secondary">
-              Посмотреть челленджи
-            </Button>
-          </Link>
+      {/* Challenges Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold mb-4">Популярные челленджи</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Присоединяйтесь к активным челленджам и начните свой путь к достижению целей
+            </p>
+          </div>
+
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              <span className="ml-3 text-gray-600">Загрузка челленджей...</span>
+            </div>
+          ) : challenges.length > 0 ? (
+            <div className="space-y-8">
+              {challenges.map((challenge) => {
+                const daysUntilStart = getDaysUntil(challenge.start_date);
+                const isUpcoming = isChallengeUpcoming(challenge.start_date);
+                
+                return (
+                  <Link key={challenge.id} to={`/challenges/${challenge.slug}`}>
+                    <Card padding={false} hover className="overflow-hidden">
+                      <div className="flex flex-col md:flex-row">
+                        {/* Image */}
+                        <div className="relative w-full md:w-[45%] h-56 md:h-auto bg-primary-600 flex-shrink-0">
+                          {challenge.image ? (
+                            <img
+                              src={getImageUrl(challenge.image)}
+                              alt={challenge.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <Award className="w-24 h-24 text-white opacity-50" />
+                            </div>
+                          )}
+                          <div className="absolute top-4 right-4">
+                            {getStatusBadge(challenge)}
+                          </div>
+                          {challenge.joined && (
+                            <div className="absolute top-4 left-4">
+                              <Badge variant="info" className="flex items-center space-x-1">
+                                <Users className="w-3 h-3" />
+                                <span>Участвуете</span>
+                              </Badge>
+                            </div>
+                          )}
+                          {challenge.is_full && !challenge.joined && (
+                            <div className="absolute top-4 left-4">
+                              <Badge variant="danger">Набор закрыт</Badge>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 p-8">
+                          <div className="flex flex-col h-full">
+                            <div className="flex-1">
+                              <h3 className="text-2xl font-bold text-gray-900 mb-4">
+                                {challenge.title}
+                              </h3>
+
+                              {challenge.short_description && (
+                                <p className="text-gray-600 mb-6 line-clamp-2 text-lg">
+                                  {challenge.short_description}
+                                </p>
+                              )}
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Calendar className="w-5 h-5 mr-3" />
+                                  <div>
+                                    <div className="font-medium text-base">Даты</div>
+                                    <div className="text-sm">
+                                      {formatDate(challenge.start_date)} - {formatDate(challenge.end_date)}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Clock className="w-5 h-5 mr-3" />
+                                  <div>
+                                    <div className="font-medium text-base">Длительность</div>
+                                    <div className="text-sm">
+                                      {challenge.duration_days} дней
+                                      {isUpcoming && daysUntilStart > 0 && (
+                                        <span className="text-primary-600 font-medium">
+                                          • Начнется через {daysUntilStart} {daysUntilStart === 1 ? 'день' : 'дней'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <Users className="w-5 h-5 mr-3" />
+                                  <div>
+                                    <div className="font-medium text-base">Участники</div>
+                                    <div className="text-sm">
+                                      {challenge.participants_count} / {challenge.max_participants || '∞'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center text-sm text-gray-600">
+                                  <div>
+                                    <div className="font-medium text-base">Тип</div>
+                                    <div className="text-sm">
+                                      {challenge.is_public ? (
+                                        <Badge variant="info" className="text-sm">Публичный</Badge>
+                                      ) : (
+                                        <Badge variant="default" className="text-sm">Приватный</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-6 border-t border-gray-200">
+                              <div className="flex items-center text-primary-600 font-medium text-lg">
+                                <span>Подробнее</span>
+                                <ArrowRight className="w-5 h-5 ml-2" />
+                              </div>
+                              <div className="text-base text-gray-500">
+                                Перейти к челленджу
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Award className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Пока нет активных челленджей
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Создайте первый челлендж или зайдите позже
+              </p>
+              <p className="text-sm text-gray-500">
+                Загружено челленджей: {challenges.length}
+              </p>
+            </div>
+          )}
+
+          <div className="text-center mt-12">
+            <Link to="/challenges">
+              <Button size="lg" variant="outline">
+                Посмотреть все челленджи
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
+
+    
     </div>
   );
 };

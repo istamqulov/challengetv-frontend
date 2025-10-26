@@ -356,7 +356,7 @@ export const ChallengeDetailPage: React.FC = () => {
                     {challenge.levels.map((level) => (
                       <div
                         key={level.id}
-                        className="p-4 bg-gray-50 rounded-lg border-l-4 border-primary-600"
+                        className="p-4 bg-gray-50 rounded-lg border-l-2 border-primary-600"
                       >
                         <div className="flex items-center justify-between mb-2">
                           <div className="flex items-center space-x-3">
@@ -404,11 +404,7 @@ export const ChallengeDetailPage: React.FC = () => {
                           <h3 className="font-semibold text-gray-900">
                             {allowedActivity.activity.name}
                           </h3>
-                          {allowedActivity.is_active ? (
-                            <Badge variant="success">Активна</Badge>
-                          ) : (
-                            <Badge variant="default">Неактивна</Badge>
-                          )}
+
                         </div>
                         <div className="text-sm text-gray-600">
                           <p className="font-medium text-primary-600">
