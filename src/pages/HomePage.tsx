@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, TrendingUp, Award, Calendar, Users, Clock, ArrowRight } from 'lucide-react';
+import { Trophy, TrendingUp, Award, Calendar, Users, Clock, ArrowRight, UserPlus, UserMinus } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { JoinChallengeModal } from '@/components/challenges/JoinChallengeModal';
+import { LeaveChallengeModal } from '@/components/challenges/LeaveChallengeModal';
+import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
 import type { ChallengeList } from '@/types/api';
 import {
@@ -18,6 +21,11 @@ import {
 export const HomePage: React.FC = () => {
   const [challenges, setChallenges] = useState<ChallengeList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [joiningChallenges, setJoiningChallenges] = useState<Set<number>>(new Set());
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeList | null>(null);
+  const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     loadChallenges();
@@ -60,6 +68,86 @@ export const HomePage: React.FC = () => {
       return <Badge variant="danger">Отменен</Badge>;
     }
     return <Badge variant="warning">{getChallengeStatusText(challenge.status)}</Badge>;
+  };
+
+  const handleJoinChallenge = async (challenge: ChallengeList, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    if (!isAuthenticated) {
+      // Redirect to login if not authenticated
+      window.location.href = '/login';
+      return;
+    }
+
+    // Open modal for level selection
+    setSelectedChallenge(challenge);
+    setJoinModalOpen(true);
+  };
+
+  const handleJoinWithLevel = async (challengeLevelId: number) => {
+    if (!selectedChallenge) return;
+
+    setJoiningChallenges(prev => new Set(prev).add(selectedChallenge.id));
+    
+    try {
+      await apiClient.joinChallenge(selectedChallenge.slug, challengeLevelId);
+      
+      // Update the challenge in the list
+      setChallenges(prev => prev.map(c => 
+        c.id === selectedChallenge.id ? { ...c, joined: true } : c
+      ));
+      
+      // Close modal
+      setJoinModalOpen(false);
+      setSelectedChallenge(null);
+    } catch (error) {
+      console.error('Error joining challenge:', error);
+      // You could add a toast notification here
+    } finally {
+      setJoiningChallenges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedChallenge.id);
+        return newSet;
+      });
+    }
+  };
+
+  const handleLeaveChallenge = async (challenge: ChallengeList, event: React.MouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Open modal for confirmation
+    setSelectedChallenge(challenge);
+    setLeaveModalOpen(true);
+  };
+
+  const handleConfirmLeave = async () => {
+    if (!selectedChallenge) return;
+
+    setJoiningChallenges(prev => new Set(prev).add(selectedChallenge.id));
+    
+    try {
+      await apiClient.leaveChallenge(selectedChallenge.slug);
+      
+      // Update the challenge in the list
+      setChallenges(prev => prev.map(c => 
+        c.id === selectedChallenge.id ? { ...c, joined: false } : c
+      ));
+      
+      // Close modal
+      setLeaveModalOpen(false);
+      setSelectedChallenge(null);
+    } catch (error) {
+      console.error('Error leaving challenge:', error);
+      // You could add a toast notification here
+    } finally {
+      setJoiningChallenges(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedChallenge.id);
+        return newSet;
+      });
+    }
   };
 
   return (
@@ -257,8 +345,47 @@ export const HomePage: React.FC = () => {
                                 <span>Подробнее</span>
                                 <ArrowRight className="w-5 h-5 ml-2" />
                               </div>
-                              <div className="text-base text-gray-500">
-                                Перейти к челленджу
+                              
+                              <div className="flex items-center space-x-3">
+                                {isAuthenticated ? (
+                                  challenge.joined ? (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => handleLeaveChallenge(challenge, e)}
+                                      disabled={joiningChallenges.has(challenge.id)}
+                                      className="flex items-center space-x-1"
+                                    >
+                                      <UserMinus className="w-4 h-4" />
+                                      <span>
+                                        {joiningChallenges.has(challenge.id) ? 'Покидаем...' : 'Покинуть'}
+                                      </span>
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="primary"
+                                      size="sm"
+                                      onClick={(e) => handleJoinChallenge(challenge, e)}
+                                      disabled={joiningChallenges.has(challenge.id) || challenge.is_full}
+                                      className="flex items-center space-x-1"
+                                    >
+                                      <UserPlus className="w-4 h-4" />
+                                      <span>
+                                        {joiningChallenges.has(challenge.id) ? 'Присоединяемся...' : 'Присоединиться'}
+                                      </span>
+                                    </Button>
+                                  )
+                                ) : (
+                                  <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={(e) => handleJoinChallenge(challenge, e)}
+                                    className="flex items-center space-x-1"
+                                  >
+                                    <UserPlus className="w-4 h-4" />
+                                    <span>Войти для участия</span>
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -294,7 +421,35 @@ export const HomePage: React.FC = () => {
         </div>
       </section>
 
-    
+      {/* Join Challenge Modal */}
+      {selectedChallenge && (
+        <JoinChallengeModal
+          isOpen={joinModalOpen}
+          onClose={() => {
+            setJoinModalOpen(false);
+            setSelectedChallenge(null);
+          }}
+          onJoin={handleJoinWithLevel}
+          challengeTitle={selectedChallenge.title}
+          levels={(selectedChallenge as any)?.levels || []}
+          isLoading={joiningChallenges.has(selectedChallenge.id)}
+        />
+      )}
+
+      {/* Leave Challenge Modal */}
+      {selectedChallenge && (
+        <LeaveChallengeModal
+          isOpen={leaveModalOpen}
+          onClose={() => {
+            setLeaveModalOpen(false);
+            setSelectedChallenge(null);
+          }}
+          onLeave={handleConfirmLeave}
+          challengeTitle={selectedChallenge.title}
+          isLoading={joiningChallenges.has(selectedChallenge.id)}
+        />
+      )}
+     
     </div>
   );
 };

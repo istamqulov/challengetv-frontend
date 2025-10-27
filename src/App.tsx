@@ -5,6 +5,7 @@ import { HomePage } from '@/pages/HomePage';
 import { ChallengesPage } from '@/pages/ChallengesPage';
 import { ChallengeDetailPage } from '@/pages/ChallengeDetailPage';
 import { LoginPage } from '@/pages/LoginPage';
+import { RegisterPage } from '@/pages/RegisterPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -26,20 +27,21 @@ function App() {
     
     console.log('Current auth state:', { tokens, isAuthenticated, user });
 
-    // Initialize authentication on app start
+    // Initialize authentication on app start (only once)
     useEffect(() => {
       console.log('App mounted, initializing auth...');
       initializeAuth();
-    }, [initializeAuth]);
+    }, []); // Empty dependency array - run only once
 
-    // Verify token after initialization
+    // Verify token after initialization (only when tokens change)
     useEffect(() => {
-      if (tokens?.access) {
+      if (tokens?.access && isAuthenticated) {
+        console.log('Verifying token...');
         verifyToken().catch((error) => {
           console.warn('Token verification failed:', error);
         });
       }
-    }, [tokens, verifyToken]);
+    }, [tokens?.access, isAuthenticated]); // Only depend on access token and auth status
 
     return (
       <BrowserRouter>
@@ -72,6 +74,7 @@ function App() {
 
           {/* Auth routes without layout */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
 
           {/* 404 */}
           <Route

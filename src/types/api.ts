@@ -49,6 +49,7 @@ export interface ChallengeList {
   min_participants: number;
   max_participants?: number | null;
   joined?: boolean; // True if the authenticated user has joined this challenge
+  levels?: ChallengeLevel[]; // Challenge levels for join modal
 }
 
 export interface PaginatedResponse<T> {
@@ -77,6 +78,15 @@ export interface ChallengeAllowedActivity {
 export interface LoginCredentials {
   username: string;
   password: string;
+}
+
+export interface SignupCredentials {
+  username: string;
+  email: string;
+  password: string;
+  password2: string;
+  first_name: string;
+  last_name: string;
 }
 
 export interface AuthTokens {

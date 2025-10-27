@@ -52,11 +52,18 @@ export const Header: React.FC = () => {
                 </Button>
               </div>
             ) : (
-              <Link to="/login">
-                <Button variant="primary" size="sm">
-                  Войти
-                </Button>
-              </Link>
+              <div className="flex items-center space-x-3">
+                <Link to="/login">
+                  <Button variant="outline" size="sm">
+                    Войти
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button variant="primary" size="sm">
+                    Регистрация
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
 
@@ -98,13 +105,22 @@ export const Header: React.FC = () => {
                   </button>
                 </>
               ) : (
-                <Link
-                  to="/login"
-                  className="text-gray-700 hover:text-primary-600 font-medium py-2"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Войти
-                </Link>
+                <div className="flex flex-col space-y-2">
+                  <Link
+                    to="/login"
+                    className="text-gray-700 hover:text-primary-600 font-medium py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Войти
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="text-gray-700 hover:text-primary-600 font-medium py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    Регистрация
+                  </Link>
+                </div>
               )}
             </div>
           </div>

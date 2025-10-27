@@ -10,6 +10,8 @@ import {
   ChevronRight,
   Share2,
   Activity,
+  UserPlus,
+  UserMinus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -18,6 +20,8 @@ import { Loading } from '@/components/ui/Loading';
 import { ParticipantsTab } from '@/components/challenges/ParticipantsTab';
 import { MyProgressTab } from '@/components/challenges/MyProgressTab';
 import { SendProgressTab } from '@/components/challenges/SendProgressTab';
+import { JoinChallengeModal } from '@/components/challenges/JoinChallengeModal';
+import { LeaveChallengeModal } from '../components/challenges/LeaveChallengeModal';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
 import type { Challenge, Participant } from '@/types/api';
@@ -42,6 +46,9 @@ export const ChallengeDetailPage: React.FC = () => {
   const [participantsLoading, setParticipantsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'progress' | 'send'>('info');
+  const [isJoining, setIsJoining] = useState(false);
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -83,17 +90,82 @@ export const ChallengeDetailPage: React.FC = () => {
   };
 
 
-  const handleShare = () => {
-    const url = window.location.href;
+const handleShare = async () => {
+  const url = window.location.href;
+  const title = challenge?.title || 'Challenge';
+  const text = challenge?.short_description || 'Посмотри этот челлендж!';
+
+  try {
     if (navigator.share) {
-      navigator.share({
-        title: challenge?.title,
-        text: challenge?.short_description,
-        url: url,
-      });
+      // ✅ Встроенное мобильное окно "Поделиться"
+      await navigator.share({ title, text, url });
     } else {
-      navigator.clipboard.writeText(url);
+      // 💻 Fallback для ПК
+      await navigator.clipboard.writeText(url);
+
+      // Вариант 1 — просто алерт
+      alert('🔗 Ссылка скопирована в буфер обмена!');
+
+      // Вариант 2 — кастомный popup (если хочешь)
+      // showToast('Ссылка скопирована!');
+    }
+  } catch (error) {
+    console.error('Ошибка при попытке поделиться:', error);
+
+    // Последняя защита — если всё упало, хотя бы скопировать
+    try {
+      await navigator.clipboard.writeText(url);
       alert('Ссылка скопирована в буфер обмена!');
+    } catch {
+      alert('Не удалось поделиться или скопировать ссылку.');
+    }
+  }
+};
+
+  const handleJoinChallenge = async () => {
+    if (!challenge || !isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    // Open modal for level selection
+    setJoinModalOpen(true);
+  };
+
+  const handleJoinWithLevel = async (challengeLevelId: number) => {
+    if (!challenge) return;
+
+    setIsJoining(true);
+    try {
+      await apiClient.joinChallenge(challenge.slug, challengeLevelId);
+      setChallenge(prev => prev ? { ...prev, joined: true } : null);
+      setJoinModalOpen(false);
+    } catch (error) {
+      console.error('Error joining challenge:', error);
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleLeaveChallenge = async () => {
+    if (!challenge) return;
+
+    // Open modal for confirmation
+    setLeaveModalOpen(true);
+  };
+
+  const handleConfirmLeave = async () => {
+    if (!challenge) return;
+
+    setIsJoining(true);
+    try {
+      await apiClient.leaveChallenge(challenge.slug);
+      setChallenge(prev => prev ? { ...prev, joined: false } : null);
+      setLeaveModalOpen(false);
+    } catch (error) {
+      console.error('Error leaving challenge:', error);
+    } finally {
+      setIsJoining(false);
     }
   };
 
@@ -217,6 +289,43 @@ export const ChallengeDetailPage: React.FC = () => {
                     <span>Вы участвуете</span>
                   </Badge>
                 )}
+                
+                {isAuthenticated ? (
+                  challenge.joined ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleLeaveChallenge}
+                      disabled={isJoining}
+                      className="flex items-center space-x-1"
+                    >
+                      <UserMinus className="w-4 h-4" />
+                      <span>{isJoining ? 'Покидаем...' : 'Покинуть'}</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleJoinChallenge}
+                      disabled={isJoining || challenge.is_full}
+                      className="flex items-center space-x-1"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>{isJoining ? 'Присоединяемся...' : 'Присоединиться'}</span>
+                    </Button>
+                  )
+                ) : (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleJoinChallenge}
+                    className="flex items-center space-x-1"
+                  >
+                    <UserPlus className="w-4 h-4" />
+                    <span>Войти для участия</span>
+                  </Button>
+                )}
+                
                 <Button
                   variant="ghost"
                   size="sm"
@@ -268,82 +377,82 @@ export const ChallengeDetailPage: React.FC = () => {
         <div className="mb-8">
           {activeTab === 'info' && (
             <>
-              {/* Info Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                <Card>
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-primary-100 rounded-lg">
-                      <Calendar className="w-6 h-6 text-primary-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Даты</p>
-                      <p className="font-semibold">
-                        {formatDate(challenge.start_date, 'dd MMM')} - {formatDate(challenge.end_date, 'dd MMM')}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
+        {/* Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-primary-100 rounded-lg">
+                <Calendar className="w-6 h-6 text-primary-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Даты</p>
+                <p className="font-semibold">
+                  {formatDate(challenge.start_date, 'dd MMM')} - {formatDate(challenge.end_date, 'dd MMM')}
+                </p>
+              </div>
+            </div>
+          </Card>
 
-                <Card>
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-secondary-100 rounded-lg">
-                      <Clock className="w-6 h-6 text-secondary-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Длительность</p>
-                      <p className="font-semibold">{challenge.duration_days} дней</p>
-                    </div>
-                  </div>
-                </Card>
+          <Card>
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-secondary-100 rounded-lg">
+                <Clock className="w-6 h-6 text-secondary-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Длительность</p>
+                <p className="font-semibold">{challenge.duration_days} дней</p>
+              </div>
+            </div>
+          </Card>
 
-                <Card>
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-green-100 rounded-lg">
-                      <Users className="w-6 h-6 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Участники</p>
-                      <p className="font-semibold">
-                        {challenge.participants_count} / {challenge.max_participants || '∞'}
-                      </p>
-                    </div>
-                  </div>
-                </Card>
+          <Card>
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Users className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Участники</p>
+                <p className="font-semibold">
+                  {challenge.participants_count} / {challenge.max_participants || '∞'}
+                </p>
+              </div>
+            </div>
+          </Card>
 
-                <Card>
-                  <div className="flex items-center space-x-3">
-                    <div className="p-3 bg-yellow-100 rounded-lg">
-                      <Target className="w-6 h-6 text-yellow-600" />
-                    </div>
-                    <div>
+          <Card>
+            <div className="flex items-center space-x-3">
+              <div className="p-3 bg-yellow-100 rounded-lg">
+                <Target className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div>
                       <p className="text-sm text-gray-600">Минимум участников</p>
                       <p className="font-semibold">{challenge.min_participants}</p>
-                    </div>
-                  </div>
-                </Card>
               </div>
+            </div>
+          </Card>
+        </div>
 
               {/* Description */}
               <Card className="mb-8">
-                <h2 className="text-2xl font-bold mb-4">Описание</h2>
-                <div
-                  className="prose max-w-none text-gray-700 mb-6"
-                  dangerouslySetInnerHTML={{ __html: challenge.description.replace(/\n/g, '<br/>') }}
-                />
+              <h2 className="text-2xl font-bold mb-4">Описание</h2>
+              <div
+                className="prose max-w-none text-gray-700 mb-6"
+                dangerouslySetInnerHTML={{ __html: challenge.description.replace(/\n/g, '<br/>') }}
+              />
 
-                {challenge.prize_description && (
-                  <>
-                    <h3 className="text-xl font-bold mb-3 flex items-center">
-                      <Award className="w-6 h-6 mr-2 text-yellow-500" />
-                      Призы
-                    </h3>
-                    <div
-                      className="prose max-w-none text-gray-700 mb-6"
-                      dangerouslySetInnerHTML={{ __html: challenge.prize_description.replace(/\n/g, '<br/>') }}
-                    />
-                  </>
-                )}
-              </Card>
+              {challenge.prize_description && (
+                <>
+                  <h3 className="text-xl font-bold mb-3 flex items-center">
+                    <Award className="w-6 h-6 mr-2 text-yellow-500" />
+                    Призы
+                  </h3>
+                  <div
+                    className="prose max-w-none text-gray-700 mb-6"
+                    dangerouslySetInnerHTML={{ __html: challenge.prize_description.replace(/\n/g, '<br/>') }}
+                  />
+                </>
+              )}
+            </Card>
 
               {/* Levels */}
               {challenge.levels && challenge.levels.length > 0 && (
@@ -352,18 +461,18 @@ export const ChallengeDetailPage: React.FC = () => {
                     <Target className="w-8 h-8 mr-3 text-primary-600" />
                     Уровни сложности ({challenge.levels.length})
                   </h2>
-                  <div className="space-y-4">
+            <div className="space-y-4">
                     {challenge.levels.map((level) => (
                       <div
                         key={level.id}
                         className="p-4 bg-gray-50 rounded-lg border-l-2 border-primary-600"
                       >
                         <div className="flex items-center justify-between mb-2">
-                          <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-3">
                             <span className="text-2xl font-bold text-primary-600">
                               {level.level_number}
                             </span>
-                            <div>
+                          <div>
                               <h3 className="text-lg font-bold">{level.name}</h3>
                               {level.description && (
                                 <div 
@@ -381,15 +490,15 @@ export const ChallengeDetailPage: React.FC = () => {
                     ))}
                   </div>
                 </Card>
-              )}
+          )}
 
               {/* Allowed Activities */}
               {challenge.allowed_activities && challenge.allowed_activities.length > 0 && (
-                <Card>
-                  <h2 className="text-2xl font-bold mb-6 flex items-center">
+            <Card>
+              <h2 className="text-2xl font-bold mb-6 flex items-center">
                     <Activity className="w-8 h-8 mr-3 text-primary-600" />
                     Разрешенные активности ({challenge.allowed_activities.length})
-                  </h2>
+              </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {challenge.allowed_activities.map((allowedActivity) => (
                       <div
@@ -419,10 +528,10 @@ export const ChallengeDetailPage: React.FC = () => {
                               />
                             </div>
                           )}
-                        </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
                 </Card>
               )}
             </>
@@ -441,6 +550,29 @@ export const ChallengeDetailPage: React.FC = () => {
           {activeTab === 'send' && isAuthenticated && <SendProgressTab />}
         </div>
       </div>
+
+      {/* Join Challenge Modal */}
+      {challenge && (
+        <JoinChallengeModal
+          isOpen={joinModalOpen}
+          onClose={() => setJoinModalOpen(false)}
+          onJoin={handleJoinWithLevel}
+          challengeTitle={challenge.title}
+          levels={challenge.levels || []}
+          isLoading={isJoining}
+        />
+      )}
+
+      {/* Leave Challenge Modal */}
+      {challenge && (
+        <LeaveChallengeModal
+          isOpen={leaveModalOpen}
+          onClose={() => setLeaveModalOpen(false)}
+          onLeave={handleConfirmLeave}
+          challengeTitle={challenge.title}
+          isLoading={isJoining}
+        />
+      )}
     </div>
   );
 };

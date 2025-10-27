@@ -8,6 +8,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  isRefreshing: boolean; // Add flag to prevent infinite refresh loops
+  lastVerifiedToken: string | null; // Track last verified token to prevent re-verification
 }
 
 interface AuthActions {
@@ -64,6 +66,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   isAuthenticated: false,
   isLoading: false,
   error: null,
+  isRefreshing: false,
+  lastVerifiedToken: null,
 
   // Initialize auth from localStorage
   initializeAuth: () => {
@@ -80,21 +84,23 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         apiClient.setAuthToken(stored.tokens.access);
         console.log('Auth token set from storage');
         
-        // Fetch fresh user data
-        apiClient.getCurrentUser()
-          .then((userData) => {
-            console.log('Fetched fresh user data:', userData);
-            set({ user: userData });
-            // Update localStorage with fresh user data
-            saveAuthToStorage({
-              user: userData,
-              tokens: stored.tokens,
-              isAuthenticated: true,
+        // Only fetch fresh user data if we don't have user data or if it's stale
+        if (!stored.user) {
+          apiClient.getCurrentUser()
+            .then((userData) => {
+              console.log('Fetched fresh user data:', userData);
+              set({ user: userData });
+              // Update localStorage with fresh user data
+              saveAuthToStorage({
+                user: userData,
+                tokens: stored.tokens,
+                isAuthenticated: true,
+              });
+            })
+            .catch((error) => {
+              console.warn('Failed to fetch user data:', error);
             });
-          })
-          .catch((error) => {
-            console.warn('Failed to fetch user data:', error);
-          });
+        }
       }
     }
   },
@@ -178,6 +184,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       tokens: null,
       isAuthenticated: false,
       error: null,
+      lastVerifiedToken: null, // Reset verification flag
     });
     
     // Clear from localStorage
@@ -188,11 +195,15 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   },
 
   refreshTokens: async () => {
-    const { tokens } = get();
-    if (!tokens?.refresh) {
-      get().logout();
+    const { tokens, isRefreshing } = get();
+    if (!tokens?.refresh || isRefreshing) {
+      if (!tokens?.refresh) {
+        get().logout();
+      }
       return;
     }
+
+    set({ isRefreshing: true });
 
     try {
       const newTokens = await apiClient.refreshToken(tokens.refresh);
@@ -200,6 +211,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({
         tokens: newTokens,
         error: null,
+        isRefreshing: false,
       });
 
       // Update localStorage
@@ -215,28 +227,30 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch (error) {
       // If refresh fails, logout user
       console.warn('Token refresh failed:', error);
+      set({ isRefreshing: false });
       get().logout();
     }
   },
 
   verifyToken: async () => {
-    const { tokens } = get();
-    if (!tokens?.access) {
-      get().logout();
-      return;
-    }
+    const { tokens, isRefreshing, isVerifying, lastVerifiedToken } = get();
+    if (!tokens?.access || isRefreshing || isVerifying) return;
 
+    // Don't verify same token twice
+    if (lastVerifiedToken === tokens.access) return;
+
+    set({ isVerifying: true });
     try {
       const response = await apiClient.verifyToken(tokens.access);
-      
-      if (!response.valid) {
-        // Try to refresh tokens
+      if (!response.valid && !isRefreshing) {
         await get().refreshTokens();
+      } else {
+        set({ lastVerifiedToken: tokens.access });
       }
     } catch (error) {
-      // If verification fails, logout user
-      console.warn('Token verification failed:', error);
       get().logout();
+    } finally {
+      set({ isVerifying: false });
     }
   },
 
