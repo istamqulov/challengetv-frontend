@@ -6,6 +6,7 @@ import { ChallengesPage } from '@/pages/ChallengesPage';
 import { ChallengeDetailPage } from '@/pages/ChallengeDetailPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
+import { ProfilePage } from '@/pages/ProfilePage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -69,6 +70,18 @@ function App() {
               <Layout>
                 <ChallengeDetailPage />
               </Layout>
+            }
+          />
+
+          {/* Protected routes */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <ProfilePage />
+                </Layout>
+              </ProtectedRoute>
             }
           />
 

@@ -542,10 +542,12 @@ const handleShare = async () => {
               participants={participants}
               participantsLoading={participantsLoading}
               challengeLevels={challenge?.levels || []}
+              challengeSlug={challenge?.slug || ''}
+              challenge={challenge}
             />
           )}
 
-          {activeTab === 'progress' && isAuthenticated && <MyProgressTab />}
+          {activeTab === 'progress' && isAuthenticated && <MyProgressTab challenge={challenge} />}
 
           {activeTab === 'send' && isAuthenticated && <SendProgressTab />}
         </div>

@@ -175,3 +175,41 @@ export interface Participant {
   days_total: number;
   completed_at?: string | null;
 }
+
+// Daily Progress Types
+export interface DailyProgressItem {
+  id: number;
+  daily_progress: number;
+  activity: number;
+  quantity: number;
+  hp_earned: number;
+  type: 'photo' | 'video' | 'text';
+  file?: string;
+  description: string;
+  uploaded_at: string;
+  status: 'pending' | 'approved' | 'rejected';
+  activity_name?: string; // Added for display purposes
+  activity_unit?: string; // Added for display purposes
+}
+
+export interface DailyProgress {
+  id: number;
+  date: string;
+  total_hp: number;
+  required_hp: number;
+  is_completed: boolean;
+  is_spare_day: boolean;
+  activities_data: Record<string, any>;
+  submitted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  completion_percentage: number;
+  items: DailyProgressItem[];
+}
+
+export interface DailyProgressResponse {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: DailyProgress[];
+}

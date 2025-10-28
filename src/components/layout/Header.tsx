@@ -38,9 +38,12 @@ export const Header: React.FC = () => {
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
-                <span className="text-gray-700 font-medium">
+                <Link
+                  to="/profile"
+                  className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
+                >
                   Привет, {user?.username}!
-                </span>
+                </Link>
                 <Button
                   variant="outline"
                   size="sm"
@@ -90,12 +93,14 @@ export const Header: React.FC = () => {
               
               {isAuthenticated ? (
                 <>
-                  <div className="flex items-center space-x-2 py-2">
-                    <User className="w-4 h-4 text-gray-500" />
-                    <span className="text-gray-700 font-medium">
-                      {user?.username}
-                    </span>
-                  </div>
+                  <Link
+                    to="/profile"
+                    className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 font-medium py-2"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Профиль</span>
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 font-medium py-2"

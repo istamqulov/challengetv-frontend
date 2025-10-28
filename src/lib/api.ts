@@ -5,16 +5,13 @@ import type {
   ChallengeFilters,
   PaginatedResponse,
   Participant,
-  ChallengeLevel,
-  Activity,
-  ChallengeAllowedActivity,
   LoginCredentials,
   SignupCredentials,
   LoginResponse,
   AuthTokens,
-  VerifyTokenRequest,
   VerifyTokenResponse,
   User,
+  DailyProgressResponse,
 } from '@/types/api';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -81,6 +78,11 @@ class ApiClient {
     return response.data;
   }
 
+  async updateProfile(data: Partial<User>): Promise<User> {
+    const response = await this.client.patch('/users/me/', data);
+    return response.data;
+  }
+
   async joinChallenge(slug: string, challengeLevelId: number): Promise<void> {
     await this.client.post(`/challenges/${slug}/join/`, {
       challenge_level_id: challengeLevelId,
@@ -89,6 +91,14 @@ class ApiClient {
 
   async leaveChallenge(slug: string): Promise<void> {
     await this.client.post(`/challenges/${slug}/leave/`);
+  }
+
+  async getDailyProgress(slug: string, participantId?: number): Promise<DailyProgressResponse> {
+    const endpoint = participantId 
+      ? `/challenges/${slug}/participants/${participantId}/daily-progress/`
+      : `/challenges/${slug}/participants/me/daily-progress/`;
+    const response = await this.client.get(endpoint);
+    return response.data;
   }
 
   // Set authorization header for authenticated requests

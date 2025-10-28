@@ -1,8 +1,11 @@
-import React from 'react';
-import { Users } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
+import { ProgressSection } from './ProgressSection';
 import type { Participant, ChallengeLevel } from '@/types/api';
 import { formatDate } from '@/lib/utils';
 
@@ -10,16 +13,28 @@ interface ParticipantsTabProps {
   participants: Participant[];
   participantsLoading: boolean;
   challengeLevels: ChallengeLevel[];
+  challengeSlug: string;
+  challenge?: Challenge;
 }
 
 export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
   participants,
   participantsLoading,
   challengeLevels,
+  challengeSlug,
+  challenge,
 }) => {
+  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
+  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+
   const getLevelDetails = (levelId: number) => {
     if (!challengeLevels) return null;
     return challengeLevels.find(level => level.id === levelId);
+  };
+
+  const handleViewProgress = (participant: Participant) => {
+    setSelectedParticipant(participant);
+    setIsProgressModalOpen(true);
   };
 
   return (
@@ -55,6 +70,9 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Присоединился
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Действия
                 </th>
               </tr>
             </thead>
@@ -134,6 +152,17 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(participant.joined_at)}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleViewProgress(participant)}
+                      className="flex items-center space-x-1"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>Прогресс</span>
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -144,6 +173,22 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
           Пока нет участников
         </p>
       )}
+
+      {/* Progress Modal */}
+      <Modal
+        isOpen={isProgressModalOpen}
+        onClose={() => setIsProgressModalOpen(false)}
+        title={selectedParticipant ? `Прогресс ${selectedParticipant.user.username}` : 'Прогресс участника'}
+        size="large"
+      >
+        {selectedParticipant && (
+          <ProgressSection
+            challengeSlug={challengeSlug}
+            participantId={selectedParticipant.id}
+            challenge={challenge}
+          />
+        )}
+      </Modal>
     </Card>
   );
 };
