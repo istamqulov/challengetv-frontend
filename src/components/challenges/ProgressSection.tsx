@@ -29,7 +29,7 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   }, [challengeSlug, participantId]);
 
   useEffect(() => {
-    if (challenge && dailyProgress.length > 0) {
+    if (challenge) {
       // Set initial selected date to today or the most recent progress date
       const today = new Date().toISOString().split('T')[0];
       const challengeStart = new Date(challenge.start_date).toISOString().split('T')[0];
@@ -46,7 +46,7 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
       const dateIndex = challengeDates.findIndex(date => date === initialDate);
       setCurrentDateIndex(Math.max(0, dateIndex));
     }
-  }, [challenge, dailyProgress]);
+  }, [challenge]);
 
   const generateChallengeDates = (startDate: string, endDate: string) => {
     const dates = [];
@@ -172,6 +172,30 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
           </h3>
           <p className="text-gray-600">
             Не удалось загрузить информацию о челлендже для отображения календаря
+          </p>
+        </div>
+      </Card>
+    );
+  }
+
+  // Check if challenge hasn't started yet
+  const today = new Date().toISOString().split('T')[0];
+  const challengeStart = new Date(challenge.start_date).toISOString().split('T')[0];
+  
+  if (today < challengeStart) {
+    return (
+      <Card className="p-8">
+        <div className="text-center">
+          <Activity className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Челлендж еще не начался
+          </h3>
+          <p className="text-gray-600">
+            Челлендж начнется {new Date(challenge.start_date).toLocaleDateString('ru-RU', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
           </p>
         </div>
       </Card>

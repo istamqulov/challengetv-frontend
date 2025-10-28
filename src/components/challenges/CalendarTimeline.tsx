@@ -50,6 +50,16 @@ export const CalendarTimeline: React.FC<CalendarTimelineProps> = ({
 
   const formatDateForDisplay = (dateString: string) => {
     const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return {
+        day: '??',
+        month: '???',
+        weekday: '???',
+      };
+    }
+    
     return {
       day: date.getDate().toString().padStart(2, '0'),
       month: date.toLocaleDateString('ru-RU', { month: 'short' }),
@@ -109,7 +119,13 @@ export const CalendarTimeline: React.FC<CalendarTimelineProps> = ({
         
         <div className="text-center">
           <h3 className="text-lg font-semibold text-gray-900">
-            {formatDateForDisplay(selectedDate).weekday}, {formatDateForDisplay(selectedDate).day} {formatDateForDisplay(selectedDate).month}
+            {selectedDate ? (
+              <>
+                {formatDateForDisplay(selectedDate).weekday}, {formatDateForDisplay(selectedDate).day} {formatDateForDisplay(selectedDate).month}
+              </>
+            ) : (
+              'Выберите дату'
+            )}
           </h3>
         </div>
         

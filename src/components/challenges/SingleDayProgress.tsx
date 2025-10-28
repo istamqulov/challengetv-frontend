@@ -17,7 +17,14 @@ export const SingleDayProgress: React.FC<SingleDayProgressProps> = ({
   isLoading = false 
 }) => {
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Неверная дата';
+    }
+    
+    return date.toLocaleDateString('ru-RU', {
       day: 'numeric',
       month: 'long',
       year: 'numeric',

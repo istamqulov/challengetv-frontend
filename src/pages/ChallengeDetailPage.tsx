@@ -56,12 +56,12 @@ export const ChallengeDetailPage: React.FC = () => {
     }
   }, [slug]);
 
-  // Reset active tab if user is not authenticated and tries to access auth-only tabs
+  // Reset active tab if user is not authenticated or not joined and tries to access progress tabs
   useEffect(() => {
-    if (!isAuthenticated && (activeTab === 'progress' || activeTab === 'send')) {
+    if ((!isAuthenticated || !challenge?.joined) && (activeTab === 'progress' || activeTab === 'send')) {
       setActiveTab('info');
     }
-  }, [isAuthenticated, activeTab]);
+  }, [isAuthenticated, challenge?.joined, activeTab]);
 
   const loadChallengeData = async () => {
     if (!slug) return;
@@ -346,7 +346,7 @@ const handleShare = async () => {
               {[
                 { id: 'info', label: 'Информация', icon: Trophy, shortLabel: 'Инфо' },
                 { id: 'participants', label: 'Участники', icon: Users, shortLabel: 'Участники' },
-                ...(isAuthenticated ? [
+                ...(isAuthenticated && challenge?.joined ? [
                   { id: 'progress', label: 'Мой прогресс', icon: Target, shortLabel: 'Прогресс' },
                   { id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' },
                 ] : []),
@@ -541,7 +541,6 @@ const handleShare = async () => {
             <ParticipantsTab
               participants={participants}
               participantsLoading={participantsLoading}
-              challengeLevels={challenge?.levels || []}
               challengeSlug={challenge?.slug || ''}
               challenge={challenge}
             />

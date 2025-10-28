@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
 import { ProgressSection } from './ProgressSection';
-import type { Participant, ChallengeLevel } from '@/types/api';
+import type { Participant } from '@/types/api';
 import { formatDate } from '@/lib/utils';
 
 interface ParticipantsTabProps {
   participants: Participant[];
   participantsLoading: boolean;
-  challengeLevels: ChallengeLevel[];
   challengeSlug: string;
   challenge?: Challenge;
 }
@@ -20,16 +19,15 @@ interface ParticipantsTabProps {
 export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
   participants,
   participantsLoading,
-  challengeLevels,
   challengeSlug,
   challenge,
 }) => {
   const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
 
-  const getLevelDetails = (levelId: number) => {
-    if (!challengeLevels) return null;
-    return challengeLevels.find(level => level.id === levelId);
+  const getLevelDetails = (participant: Participant) => {
+    // Now challenge_level is already an object, so we can return it directly
+    return participant.challenge_level;
   };
 
   const handleViewProgress = (participant: Participant) => {
@@ -113,7 +111,7 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {(() => {
-                      const level = getLevelDetails(participant.challenge_level);
+                      const level = getLevelDetails(participant);
                       return level ? (
                         <>
                           {level.name}
@@ -122,7 +120,7 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                           </div>
                         </>
                       ) : (
-                        <span className="text-gray-400">Уровень {participant.challenge_level}</span>
+                        <span className="text-gray-400">Уровень неизвестен</span>
                       );
                     })()}
                   </td>
@@ -144,7 +142,7 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                           ></div>
                         </div>
                         <div className="text-xs text-gray-500 mt-1">
-                          {participant.completion_percentage}% завершено
+                          {participant.completion_percentage_display} завершено
                         </div>
                       </div>
                     </div>
