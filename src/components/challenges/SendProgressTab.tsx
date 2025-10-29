@@ -24,7 +24,7 @@ import type {
   Activity as ActivityType,
   Participant 
 } from '@/types/api';
-import { getErrorMessage } from '@/lib/utils';
+import { getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil } from '@/lib/utils';
 
 export const SendProgressTab: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -281,6 +281,48 @@ export const SendProgressTab: React.FC = () => {
         <div className="text-center py-12">
           <h3 className="text-lg font-medium text-gray-900 mb-2">Участие не найдено</h3>
           <p className="text-gray-600">Вы не участвуете в этом челлендже</p>
+        </div>
+      </Card>
+    );
+  }
+
+  // Проверяем статус челленджа
+  const isActive = challenge ? isChallengeActive(challenge.start_date, challenge.end_date) : false;
+  const isUpcoming = challenge ? isChallengeUpcoming(challenge.start_date) : false;
+  const daysUntilStart = challenge ? getDaysUntil(challenge.start_date) : 0;
+
+  if (isUpcoming) {
+    return (
+      <Card>
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Calendar className="w-8 h-8 text-blue-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Челлендж еще не начался</h3>
+          <p className="text-gray-600 mb-4">
+            Загрузка прогресса будет доступна с {challenge?.start_date ? new Date(challenge.start_date).toLocaleDateString('ru-RU') : 'даты начала челленджа'}
+          </p>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 inline-block">
+            <p className="text-sm text-blue-700">
+              <strong>До начала челленджа:</strong> {daysUntilStart} {daysUntilStart === 1 ? 'день' : daysUntilStart < 5 ? 'дня' : 'дней'}
+            </p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  if (!isActive) {
+    return (
+      <Card>
+        <div className="text-center py-12">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Activity className="w-8 h-8 text-gray-600" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Челлендж завершен</h3>
+          <p className="text-gray-600">
+            Загрузка прогресса недоступна для завершенных челленджей
+          </p>
         </div>
       </Card>
     );

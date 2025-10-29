@@ -348,7 +348,7 @@ const handleShare = async () => {
                 { id: 'participants', label: 'Участники', icon: Users, shortLabel: 'Участники' },
                 ...(isAuthenticated && challenge?.joined ? [
                   { id: 'progress', label: 'Мой прогресс', icon: Target, shortLabel: 'Прогресс' },
-                  { id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' },
+                  ...(isActive ? [{ id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' }] : []),
                 ] : []),
               ].map((tab) => (
                 <button
