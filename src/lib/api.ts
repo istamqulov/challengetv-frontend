@@ -12,6 +12,8 @@ import type {
   VerifyTokenResponse,
   User,
   DailyProgressResponse,
+  DailyProgressUploadRequest,
+  DailyProgressUploadResponse,
 } from '@/types/api';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -98,6 +100,48 @@ class ApiClient {
       ? `/challenges/${slug}/participants/${participantId}/daily-progress/`
       : `/challenges/${slug}/participants/me/daily-progress/`;
     const response = await this.client.get(endpoint);
+    return response.data;
+  }
+
+  async uploadDailyProgress(data: DailyProgressUploadRequest): Promise<DailyProgressUploadResponse> {
+    const formData = new FormData();
+    formData.append('participant_id', data.participant_id.toString());
+    formData.append('date', data.date);
+    
+    data.items.forEach((item, index) => {
+      // Используем формат, который требует Django: items[0][field]
+      formData.append(`items[${index}][activity]`, item.activity.toString());
+      formData.append(`items[${index}][quantity]`, item.quantity.toString());
+      formData.append(`items[${index}][type]`, item.type);
+      formData.append(`items[${index}][description]`, item.description || '');
+      
+      if (item.file) {
+        console.log(`Adding file for item ${index}:`, {
+          name: item.file.name,
+          size: item.file.size,
+          type: item.file.type,
+          lastModified: item.file.lastModified
+        });
+        formData.append(`items[${index}][file]`, item.file, item.file.name);
+      }
+    });
+
+    // Debug: проверим содержимое FormData
+    console.log('FormData entries:');
+    for (let [key, value] of formData.entries()) {
+      if (value instanceof File) {
+        console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+      } else {
+        console.log(`${key}: ${value}`);
+      }
+    }
+
+
+    const response = await this.client.post('/participants/daily-progress/upload/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
     return response.data;
   }
 

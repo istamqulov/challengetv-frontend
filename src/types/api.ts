@@ -246,3 +246,37 @@ export interface DailyProgressResponse {
   previous: string | null;
   results: DailyProgress[];
 }
+
+// Daily Progress Upload Types
+export interface DailyProgressUploadItem {
+  activity: number;
+  quantity: number;
+  type: 'photo' | 'video' | 'text';
+  file?: File;
+  description: string;
+}
+
+export interface DailyProgressUploadRequest {
+  participant_id: number;
+  date: string;
+  items: DailyProgressUploadItem[];
+}
+
+export interface DailyProgressUploadResponse {
+  message: string;
+  daily_progress_id: number;
+  date: string;
+  total_hp: number;
+  required_hp: number;
+  is_completed: boolean;
+  items_created: number;
+  items: Array<{
+    id: number;
+    activity: string;
+    quantity: number;
+    hp_earned: number;
+    type: 'photo' | 'video' | 'text';
+    status: 'pending' | 'approved' | 'rejected';
+    uploaded_at: string;
+  }>;
+}
