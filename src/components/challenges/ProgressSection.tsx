@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, AlertCircle } from 'lucide-react';
+import { Activity, AlertCircle, Flame, Trophy } from 'lucide-react';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { Card } from '@/components/ui/Card';
 import { Loading } from '@/components/ui/Loading';
 import { CalendarTimeline } from './CalendarTimeline';
 import { SingleDayProgress } from './SingleDayProgress';
 import { apiClient } from '@/lib/api';
-import type { DailyProgress, DailyProgressResponse, Challenge } from '@/types/api';
+import type { DailyProgress, Challenge, ParticipantStats } from '@/types/api';
 
 interface ProgressSectionProps {
   challengeSlug: string;
@@ -23,9 +24,12 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [currentDateIndex, setCurrentDateIndex] = useState<number>(0);
+  const [stats, setStats] = useState<ParticipantStats | null>(null);
+  const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     loadDailyProgress();
+    loadParticipantStats();
   }, [challengeSlug, participantId]);
 
   useEffect(() => {
@@ -97,6 +101,20 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
       setError(err.response?.data?.detail || 'Ошибка загрузки прогресса');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadParticipantStats = async () => {
+    if (!challengeSlug) return;
+
+    setIsStatsLoading(true);
+    try {
+      const data = await apiClient.getParticipantStats(challengeSlug, participantId);
+      setStats(data);
+    } catch (err: any) {
+      console.error('Error loading participant stats:', err);
+    } finally {
+      setIsStatsLoading(false);
     }
   };
 
@@ -208,6 +226,127 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
 
   return (
     <div>
+      {/* Overall Stats */}
+      <div className="mb-6">
+        <Card className="p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-1 flex items-center">
+                <Trophy className="w-5 h-5 mr-2 text-primary-600" />
+                Общий прогресс
+              </h2>
+              <p className="text-sm text-gray-600">Сводка по челленджу</p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 w-full sm:w-auto">
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Выполнено дней</div>
+                <div className="text-lg font-semibold text-gray-900">
+                  {isStatsLoading ? '—' : `${stats?.completed_days ?? 0}/${stats?.total_days ?? (challenge ? Math.max(1, Math.round((new Date(challenge.end_date).getTime() - new Date(challenge.start_date).getTime()) / (1000*60*60*24)) + 1) : 0)}`}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Средний HP/день</div>
+                <div className="text-lg font-semibold text-gray-900">
+                  {isStatsLoading ? '—' : (stats?.average_hp_per_day ? `${stats.average_hp_per_day}/день` : '—')}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Прогресс</div>
+                <div className="text-lg font-semibold text-gray-900">
+                  {isStatsLoading ? '—' : `${stats?.completion_rate ?? '0.00'}%`}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">Провалов / Запас</div>
+                <div className="text-lg font-semibold text-gray-900 flex items-center justify-center">
+                  <Flame className="w-4 h-4 text-orange-500 mr-1" />
+                  {isStatsLoading ? '—' : `${stats?.failed_days ?? 0} / ${stats?.spare_days_used ?? 0}`}
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-sm text-gray-600">HP (итог/норма)</div>
+                <div className="text-lg font-semibold text-gray-900">
+                  {isStatsLoading ? '—' : `${stats?.total_hp ?? 0}/${stats?.total_hp_required ?? 0}`}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-gray-600 mb-1">
+              <span>Прогресс выполнения</span>
+              <span>
+                {isStatsLoading ? '—' : `${stats?.completion_rate ?? '0.00'}%`}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div
+                className="h-3 bg-gradient-to-r from-primary-500 to-primary-600 rounded-full transition-all"
+                style={{ width: `${isStatsLoading ? 0 : Math.min(100, parseFloat(String(stats?.completion_rate || '0'))) || 0}%` }}
+              />
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* HP Trend Chart */}
+      <div className="mb-6">
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+              <Activity className="w-5 h-5 mr-2 text-primary-600" />
+              Тренд HP по дням
+            </h3>
+          </div>
+          {isStatsLoading || !challenge ? (
+            <div className="text-sm text-gray-500">Данных для графика пока нет</div>
+          ) : (
+            <div className="w-full" style={{ height: 260 }}>
+              {(() => {
+                const timelineDates = generateChallengeDates(challenge.start_date, challenge.end_date);
+                const hpByDate: Record<string, number> = (stats?.hp_trend || []).reduce((acc, item) => {
+                  acc[item.date] = item.total_hp;
+                  return acc;
+                }, {} as Record<string, number>);
+                const chartData = timelineDates.map((date, idx) => ({
+                  date,
+                  day: idx + 1,
+                  hp: hpByDate[date] ?? 0,
+                }));
+                const maxY = Math.max(100, ...chartData.map(d => d.hp));
+                const CustomTooltip = ({ active, payload, label }: any) => {
+                  if (active && payload && payload.length) {
+                    const item = payload[0];
+                    const point = chartData[(label as number) - 1];
+                    return (
+                      <div className="bg-white border border-gray-200 rounded-md p-2 text-xs shadow">
+                        <div className="font-medium text-gray-800">День {label}</div>
+                        <div className="text-gray-600">{point?.date}</div>
+                        <div className="text-primary-600 font-semibold">{item.value} HP</div>
+                      </div>
+                    );
+                  }
+                  return null;
+                };
+                return (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="4 4" stroke="#e5e7eb" />
+                      <XAxis dataKey="day" tick={{ fontSize: 10, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} />
+                      <YAxis domain={[0, maxY]} tick={{ fontSize: 10, fill: '#6b7280' }} tickLine={false} axisLine={{ stroke: '#e5e7eb' }} width={36} />
+                      <Tooltip content={<CustomTooltip />} formatter={(value: any) => [value, 'HP']} labelFormatter={(label: any) => label} />
+                      <ReferenceLine y={0} stroke="#e5e7eb" />
+                      <Line type="monotone" dataKey="hp" stroke="#6366f1" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 4 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                );
+              })()}
+            </div>
+          )}
+        </Card>
+      </div>
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
           <Activity className="w-6 h-6 mr-2 text-primary-600" />

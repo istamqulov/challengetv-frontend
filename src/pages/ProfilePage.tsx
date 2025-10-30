@@ -92,11 +92,8 @@ export const ProfilePage: React.FC = () => {
       setProfileData(updatedUser);
       setIsEditing(false);
       
-      // Update auth store with new user data
-      useAuthStore.getState().login({
-        username: updatedUser.username,
-        password: '', // We don't need password for this update
-      });
+      // Update auth store with new user data without re-login
+      useAuthStore.getState().updateUser(updatedUser);
     } catch (error: any) {
       console.error('Error updating profile:', error);
       

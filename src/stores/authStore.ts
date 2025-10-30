@@ -10,6 +10,7 @@ interface AuthState {
   error: string | null;
   isRefreshing: boolean; // Add flag to prevent infinite refresh loops
   lastVerifiedToken: string | null; // Track last verified token to prevent re-verification
+  expiresAt: number | null; // Unix ms timestamp when refresh lifetime ends
 }
 
 interface AuthActions {
@@ -20,12 +21,14 @@ interface AuthActions {
   clearError: () => void;
   setLoading: (loading: boolean) => void;
   initializeAuth: () => void;
+  updateUser: (user: User) => void;
 }
 
 type AuthStore = AuthState & AuthActions;
 
 // Helper functions for localStorage
 const AUTH_STORAGE_KEY = 'challengetv-auth';
+const REFRESH_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 const saveAuthToStorage = (data: Partial<AuthState>) => {
   try {
@@ -68,15 +71,31 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   error: null,
   isRefreshing: false,
   lastVerifiedToken: null,
+  expiresAt: null,
 
   // Initialize auth from localStorage
   initializeAuth: () => {
     const stored = loadAuthFromStorage();
     if (stored) {
+      // Enforce 7-day lifetime aligned with refresh token policy
+      if (stored.expiresAt && Date.now() > stored.expiresAt) {
+        // Expired persisted auth -> clear everything
+        clearAuthFromStorage();
+        set({
+          user: null,
+          tokens: null,
+          isAuthenticated: false,
+          lastVerifiedToken: null,
+          expiresAt: null,
+        });
+        return;
+      }
+
       set({
         user: stored.user || null,
         tokens: stored.tokens || null,
         isAuthenticated: stored.isAuthenticated || false,
+        expiresAt: stored.expiresAt || null,
       });
       
       // Set auth token if available
@@ -95,6 +114,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
                 user: userData,
                 tokens: stored.tokens,
                 isAuthenticated: true,
+                expiresAt: stored.expiresAt,
               });
             })
             .catch((error) => {
@@ -117,11 +137,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         access: response.access,
         refresh: response.refresh,
       };
+      const expiresAt = Date.now() + REFRESH_LIFETIME_MS;
       
       const authData = {
         user: response.user,
         tokens,
         isAuthenticated: true,
+        expiresAt,
       };
       
       set({
@@ -143,6 +165,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           user: freshUserData,
           tokens,
           isAuthenticated: true,
+          expiresAt,
         };
         
         set({
@@ -173,6 +196,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         isAuthenticated: false,
         user: null,
         tokens: null,
+        expiresAt: null,
       });
       throw error;
     }
@@ -185,6 +209,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       isAuthenticated: false,
       error: null,
       lastVerifiedToken: null, // Reset verification flag
+      expiresAt: null,
     });
     
     // Clear from localStorage
@@ -220,6 +245,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         user: currentState.user,
         tokens: newTokens,
         isAuthenticated: currentState.isAuthenticated,
+        expiresAt: currentState.expiresAt || null,
       });
 
       // Update auth token for future requests
@@ -260,5 +286,23 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
   setLoading: (loading: boolean) => {
     set({ isLoading: loading });
+  },
+
+  updateUser: (user: User) => {
+    set((state) => {
+      const nextState = {
+        ...state,
+        user,
+        isAuthenticated: true,
+      } as AuthState;
+      // Persist updated user
+      saveAuthToStorage({
+        user,
+        tokens: state.tokens || null,
+        isAuthenticated: true,
+        expiresAt: state.expiresAt || null,
+      });
+      return nextState;
+    });
   },
 }));

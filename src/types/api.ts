@@ -280,3 +280,24 @@ export interface DailyProgressUploadResponse {
     uploaded_at: string;
   }>;
 }
+
+// Participant overall stats for a challenge
+export interface ParticipantStats {
+  total_days: number;
+  completed_days: number;
+  failed_days: number;
+  spare_days_used: number;
+  average_hp_per_day: string;
+  completion_rate: string; // percentage string like "25.00"
+  total_hp: number; // total earned by user for the challenge
+  total_hp_required: number; // total required by challenge for full duration
+  days_by_status: {
+    completed: number;
+    failed: number;
+    spare: number;
+  };
+  hp_trend: Array<{
+    date: string; // YYYY-MM-DD
+    total_hp: number;
+  }>;
+}

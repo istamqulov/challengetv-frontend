@@ -49,6 +49,7 @@ export const ChallengeDetailPage: React.FC = () => {
   const [isJoining, setIsJoining] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+  const [joinedOptimistic, setJoinedOptimistic] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -78,8 +79,9 @@ export const ChallengeDetailPage: React.FC = () => {
           return [];
         }),
       ]);
-
-      setChallenge(challengeData);
+      // If we have an optimistic joined state (just joined), enforce it to avoid UI flicker
+      const mergedChallenge = joinedOptimistic ? { ...challengeData, joined: true } : challengeData;
+      setChallenge(mergedChallenge);
       setParticipants(participantsData);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -138,8 +140,17 @@ const handleShare = async () => {
     setIsJoining(true);
     try {
       await apiClient.joinChallenge(challenge.slug, challengeLevelId);
+      // Optimistically mark as joined
+      setJoinedOptimistic(true);
       setChallenge(prev => prev ? { ...prev, joined: true } : null);
       setJoinModalOpen(false);
+      // Give backend a brief moment to create participation to avoid race conditions
+      await new Promise(resolve => setTimeout(resolve, 500));
+      // Reload server state to ensure participant is created and data is ready
+      await loadChallengeData();
+      setJoinedOptimistic(false);
+      // Navigate user to progress tab to encourage immediate update
+      setActiveTab('progress');
     } catch (error) {
       console.error('Error joining challenge:', error);
     } finally {
@@ -162,6 +173,9 @@ const handleShare = async () => {
       await apiClient.leaveChallenge(challenge.slug);
       setChallenge(prev => prev ? { ...prev, joined: false } : null);
       setLeaveModalOpen(false);
+      // After leaving, refresh data and return to info tab
+      await loadChallengeData();
+      setActiveTab('info');
     } catch (error) {
       console.error('Error leaving challenge:', error);
     } finally {

@@ -14,6 +14,7 @@ import type {
   DailyProgressResponse,
   DailyProgressUploadRequest,
   DailyProgressUploadResponse,
+  ParticipantStats,
 } from '@/types/api';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -81,7 +82,7 @@ class ApiClient {
   }
 
   async updateProfile(data: Partial<User>): Promise<User> {
-    const response = await this.client.patch('/users/me/', data);
+    const response = await this.client.patch('/users/update_profile/', data);
     return response.data;
   }
 
@@ -99,6 +100,14 @@ class ApiClient {
     const endpoint = participantId 
       ? `/challenges/${slug}/participants/${participantId}/daily-progress/`
       : `/challenges/${slug}/participants/me/daily-progress/`;
+    const response = await this.client.get(endpoint);
+    return response.data;
+  }
+
+  async getParticipantStats(slug: string, participantId?: number): Promise<ParticipantStats> {
+    const endpoint = participantId
+      ? `/challenges/${slug}/participants/${participantId}/stats/`
+      : `/challenges/${slug}/participants/me/stats/`;
     const response = await this.client.get(endpoint);
     return response.data;
   }
