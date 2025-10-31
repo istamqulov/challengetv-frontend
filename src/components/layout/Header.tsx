@@ -35,6 +35,13 @@ export const Header: React.FC = () => {
             >
               Челленджи
             </Link>
+            <Link
+              to="/top"
+              className="text-gray-700 hover:text-primary-600 font-medium transition-colors flex items-center space-x-1"
+            >
+              <Trophy className="w-4 h-4" />
+              <span>Top</span>
+            </Link>
             
             {isAuthenticated ? (
               <div className="flex items-center space-x-4">
@@ -89,6 +96,14 @@ export const Header: React.FC = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Челленджи
+              </Link>
+              <Link
+                to="/top"
+                className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 font-medium py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Trophy className="w-4 h-4" />
+                <span>Top</span>
               </Link>
               
               {isAuthenticated ? (

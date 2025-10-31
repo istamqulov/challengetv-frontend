@@ -4,6 +4,7 @@ import { Header } from '@/components/layout/Header';
 import { HomePage } from '@/pages/HomePage';
 import { ChallengesPage } from '@/pages/ChallengesPage';
 import { ChallengeDetailPage } from '@/pages/ChallengeDetailPage';
+import { TopPage } from '@/pages/TopPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { ProfilePage } from '@/pages/ProfilePage';
@@ -69,6 +70,14 @@ function App() {
             element={
               <Layout>
                 <ChallengeDetailPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/top"
+            element={
+              <Layout>
+                <TopPage />
               </Layout>
             }
           />

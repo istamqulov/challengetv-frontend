@@ -86,6 +86,17 @@ class ApiClient {
     return response.data;
   }
 
+  // Get top users by total HP earned
+  async getTopUsers(page?: number): Promise<PaginatedResponse<User>> {
+    const response = await this.client.get('/users/', {
+      params: {
+        ordering: '-total_hp_earned',
+        page: page || 1,
+      },
+    });
+    return response.data;
+  }
+
   async joinChallenge(slug: string, challengeLevelId: number): Promise<void> {
     await this.client.post(`/challenges/${slug}/join/`, {
       challenge_level_id: challengeLevelId,
