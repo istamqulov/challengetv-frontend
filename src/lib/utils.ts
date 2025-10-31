@@ -113,14 +113,88 @@ export function slugify(text: string): string {
 }
 
 export function getErrorMessage(error: any): string {
-  if (error.response?.data?.detail) {
-    return error.response.data.detail;
+  // Handle axios errors with response data
+  if (error.response?.data) {
+    const data = error.response.data;
+    
+    // Check for detail field (common in Django REST Framework)
+    if (data.detail) {
+      return typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+    }
+    
+    // Check for message field
+    if (data.message) {
+      return typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+    }
+    
+    // Check for error field
+    if (data.error) {
+      return typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+    }
+    
+    // Handle field-specific validation errors (common in Django)
+    // Format: { field_name: ["error message"] } or { field_name: "error message" }
+    const fieldErrors: string[] = [];
+    for (const [key, value] of Object.entries(data)) {
+      if (key !== 'detail' && key !== 'message' && key !== 'error') {
+        if (Array.isArray(value)) {
+          value.forEach((msg) => {
+            if (typeof msg === 'string') {
+              fieldErrors.push(`${key}: ${msg}`);
+            } else if (typeof msg === 'object') {
+              // Handle nested error objects
+              Object.entries(msg).forEach(([subKey, subMsg]) => {
+                if (Array.isArray(subMsg)) {
+                  subMsg.forEach((m) => {
+                    fieldErrors.push(`${key}.${subKey}: ${m}`);
+                  });
+                } else {
+                  fieldErrors.push(`${key}.${subKey}: ${subMsg}`);
+                }
+              });
+            }
+          });
+        } else if (typeof value === 'string') {
+          fieldErrors.push(`${key}: ${value}`);
+        } else if (typeof value === 'object') {
+          // Handle nested objects
+          Object.entries(value).forEach(([subKey, subValue]) => {
+            if (Array.isArray(subValue)) {
+              subValue.forEach((msg) => {
+                fieldErrors.push(`${key}.${subKey}: ${msg}`);
+              });
+            } else {
+              fieldErrors.push(`${key}.${subKey}: ${subValue}`);
+            }
+          });
+        }
+      }
+    }
+    
+    if (fieldErrors.length > 0) {
+      return fieldErrors.join('\n');
+    }
+    
+    // If data is a string or can be stringified
+    if (typeof data === 'string') {
+      return data;
+    }
+    
+    // Try to stringify the entire response for debugging
+    try {
+      const stringified = JSON.stringify(data);
+      if (stringified !== '{}') {
+        return stringified;
+      }
+    } catch (e) {
+      // Ignore JSON stringify errors
+    }
   }
-  if (error.response?.data?.message) {
-    return error.response.data.message;
-  }
+  
+  // Fallback to error message
   if (error.message) {
     return error.message;
   }
+  
   return 'Произошла ошибка';
 }
