@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { formatLocalDate } from '@/lib/utils';
 import type { DailyProgress } from '@/types/api';
 
 interface CalendarTimelineProps {
@@ -30,16 +31,23 @@ export const CalendarTimeline: React.FC<CalendarTimelineProps> = ({
   // Generate all dates between challenge start and tomorrow
   const generateChallengeDates = () => {
     const dates = [];
-    const start = new Date(challengeStartDate);
+    // Parse dates in local timezone
+    const startParts = challengeStartDate.split('-').map(Number);
+    const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+    
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
     
+    // Parse end date in local timezone
+    const endParts = challengeEndDate.split('-').map(Number);
+    const endDateLocal = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+    
     // Use the earlier of challenge end date or tomorrow
-    const end = new Date(Math.min(new Date(challengeEndDate).getTime(), tomorrow.getTime()));
+    const end = new Date(Math.min(endDateLocal.getTime(), tomorrow.getTime()));
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(new Date(d).toISOString().split('T')[0]);
+      dates.push(formatLocalDate(d));
     }
     
     return dates;

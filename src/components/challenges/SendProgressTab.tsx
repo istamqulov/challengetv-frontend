@@ -24,7 +24,7 @@ import type {
   Activity as ActivityType,
   Participant 
 } from '@/types/api';
-import { getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil } from '@/lib/utils';
+import { getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil, formatLocalDate } from '@/lib/utils';
 
 export const SendProgressTab: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -37,14 +37,6 @@ export const SendProgressTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
-  // Helper function to format date as YYYY-MM-DD in local timezone
-  const formatLocalDate = (date: Date): string => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     return formatLocalDate(new Date());
   });

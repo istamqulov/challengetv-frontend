@@ -112,6 +112,36 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
+/**
+ * Format date as YYYY-MM-DD in local timezone (not UTC)
+ * This ensures dates are correct for the user's timezone, e.g., Asia/Dushanbe
+ */
+export function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Get today's date in local timezone as YYYY-MM-DD
+ */
+export function getTodayLocalDate(): string {
+  return formatLocalDate(new Date());
+}
+
+/**
+ * Parse a date string (YYYY-MM-DD) and format it in local timezone
+ * Handles date strings that might be interpreted as UTC
+ */
+export function parseAndFormatLocalDate(dateString: string): string {
+  // If the date string is in YYYY-MM-DD format, create date in local timezone
+  // by parsing it as a local date instead of UTC
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return formatLocalDate(date);
+}
+
 export function getErrorMessage(error: any): string {
   // Handle axios errors with response data
   if (error.response?.data) {

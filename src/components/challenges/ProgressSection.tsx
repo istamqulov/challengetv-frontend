@@ -6,6 +6,7 @@ import { Loading } from '@/components/ui/Loading';
 import { CalendarTimeline } from './CalendarTimeline';
 import { SingleDayProgress } from './SingleDayProgress';
 import { apiClient } from '@/lib/api';
+import { formatLocalDate, getTodayLocalDate, parseAndFormatLocalDate } from '@/lib/utils';
 import type { DailyProgress, Challenge, ParticipantStats } from '@/types/api';
 
 interface ProgressSectionProps {
@@ -35,9 +36,9 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   useEffect(() => {
     if (challenge) {
       // Set initial selected date to today or the most recent progress date
-      const today = new Date().toISOString().split('T')[0];
-      const challengeStart = new Date(challenge.start_date).toISOString().split('T')[0];
-      const challengeEnd = new Date(challenge.end_date).toISOString().split('T')[0];
+      const today = getTodayLocalDate();
+      const challengeStart = parseAndFormatLocalDate(challenge.start_date);
+      const challengeEnd = parseAndFormatLocalDate(challenge.end_date);
       
       let initialDate = today;
       if (today < challengeStart) initialDate = challengeStart;
@@ -54,16 +55,23 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
 
   const generateChallengeDates = (startDate: string, endDate: string) => {
     const dates = [];
-    const start = new Date(startDate);
+    // Parse dates in local timezone
+    const startParts = startDate.split('-').map(Number);
+    const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
+    
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     tomorrow.setHours(0, 0, 0, 0);
     
+    // Parse end date in local timezone
+    const endParts = endDate.split('-').map(Number);
+    const endDateLocal = new Date(endParts[0], endParts[1] - 1, endParts[2]);
+    
     // Use the earlier of challenge end date or tomorrow
-    const end = new Date(Math.min(new Date(endDate).getTime(), tomorrow.getTime()));
+    const end = new Date(Math.min(endDateLocal.getTime(), tomorrow.getTime()));
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      dates.push(new Date(d).toISOString().split('T')[0]);
+      dates.push(formatLocalDate(d));
     }
     
     return dates;
@@ -197,8 +205,8 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   }
 
   // Check if challenge hasn't started yet
-  const today = new Date().toISOString().split('T')[0];
-  const challengeStart = new Date(challenge.start_date).toISOString().split('T')[0];
+  const today = getTodayLocalDate();
+  const challengeStart = parseAndFormatLocalDate(challenge.start_date);
   
   if (today < challengeStart) {
     return (
