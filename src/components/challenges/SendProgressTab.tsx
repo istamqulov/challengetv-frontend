@@ -33,6 +33,7 @@ export const SendProgressTab: React.FC = () => {
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -221,13 +222,19 @@ export const SendProgressTab: React.FC = () => {
     setIsSubmitting(true);
     setError(null);
     setSuccess(null);
+    setUploadProgress(0);
 
     try {
-      const response = await apiClient.uploadDailyProgress({
-        participant_id: participant.id,
-        date: selectedDate,
-        items: validItems,
-      });
+      const response = await apiClient.uploadDailyProgress(
+        {
+          participant_id: participant.id,
+          date: selectedDate,
+          items: validItems,
+        },
+        (progress) => {
+          setUploadProgress(progress);
+        }
+      );
 
       setSuccess(`${response.message} Создано элементов: ${response.items_created}, HP: ${response.total_hp}/${response.required_hp}`);
       setProgressItems([{
@@ -236,8 +243,10 @@ export const SendProgressTab: React.FC = () => {
         type: 'text',
         description: '',
       }]);
+      setUploadProgress(0);
     } catch (err) {
       setError(getErrorMessage(err));
+      setUploadProgress(0);
     } finally {
       setIsSubmitting(false);
     }
@@ -719,6 +728,42 @@ export const SendProgressTab: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Upload Progress */}
+        {isSubmitting && (
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-6 rounded-xl">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Upload className="w-5 h-5 text-blue-600" />
+                <span className="text-lg font-semibold text-gray-900">Отправка прогресса...</span>
+              </div>
+              <span className="text-xl font-bold text-blue-600">{uploadProgress}%</span>
+            </div>
+            
+            {/* Progress Bar */}
+            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+              <div
+                className="h-4 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300 ease-out flex items-center justify-end pr-2"
+                style={{ width: `${uploadProgress}%` }}
+              >
+                {uploadProgress > 10 && (
+                  <span className="text-xs font-semibold text-white">{uploadProgress}%</span>
+                )}
+              </div>
+            </div>
+            
+            {uploadProgress < 100 && (
+              <p className="mt-2 text-sm text-gray-600">
+                Пожалуйста, не закрывайте страницу до завершения загрузки
+              </p>
+            )}
+            {uploadProgress === 100 && (
+              <p className="mt-2 text-sm text-green-600 font-medium">
+                ✓ Файлы загружены, обработка данных...
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Submit Button */}
         <div className="flex justify-end">

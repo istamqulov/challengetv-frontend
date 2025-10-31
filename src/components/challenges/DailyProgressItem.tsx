@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckCircle, Clock, XCircle, Camera, Video, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import type { DailyProgressItem as DailyProgressItemType } from '@/types/api';
 
 interface DailyProgressItemProps {
@@ -9,6 +10,18 @@ interface DailyProgressItemProps {
 }
 
 export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item }) => {
+  const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
+  const [modalMediaType, setModalMediaType] = useState<'photo' | 'video' | null>(null);
+
+  const openMediaModal = (type: 'photo' | 'video') => {
+    setModalMediaType(type);
+    setIsMediaModalOpen(true);
+  };
+
+  const closeMediaModal = () => {
+    setIsMediaModalOpen(false);
+    setModalMediaType(null);
+  };
   const getStatusIcon = () => {
     switch (item.status) {
       case 'approved':
@@ -116,7 +129,8 @@ export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item }) =>
               <img
                 src={item.file}
                 alt="Progress photo"
-                className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                className="w-full h-32 object-cover rounded-lg border border-gray-200 cursor-pointer"
+                onClick={() => openMediaModal('photo')}
               />
             </div>
           </div>
@@ -128,8 +142,9 @@ export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item }) =>
             <div className="relative">
               <video
                 src={item.file}
-                controls
-                className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                controls={false}
+                className="w-full h-32 object-cover rounded-lg border border-gray-200 cursor-pointer"
+                onClick={() => openMediaModal('video')}
               />
             </div>
           </div>
@@ -140,6 +155,34 @@ export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item }) =>
           Загружено: {formatDate(item.uploaded_at)}
         </div>
       </div>
+
+      {/* Media Preview Modal */}
+      <Modal
+        isOpen={isMediaModalOpen}
+        onClose={closeMediaModal}
+        title={modalMediaType === 'photo' ? 'Просмотр фото' : modalMediaType === 'video' ? 'Просмотр видео' : ''}
+        size="xl"
+      >
+        {item.file && modalMediaType === 'photo' && (
+          <div className="w-full">
+            <img
+              src={item.file}
+              alt="Preview photo"
+              className="max-h-[80vh] w-auto mx-auto rounded-lg"
+            />
+          </div>
+        )}
+        {item.file && modalMediaType === 'video' && (
+          <div className="w-full">
+            <video
+              src={item.file}
+              controls
+              autoPlay
+              className="max-h-[80vh] w-full rounded-lg"
+            />
+          </div>
+        )}
+      </Modal>
     </Card>
   );
 };

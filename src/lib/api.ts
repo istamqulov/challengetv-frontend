@@ -112,7 +112,10 @@ class ApiClient {
     return response.data;
   }
 
-  async uploadDailyProgress(data: DailyProgressUploadRequest): Promise<DailyProgressUploadResponse> {
+  async uploadDailyProgress(
+    data: DailyProgressUploadRequest,
+    onUploadProgress?: (progress: number) => void
+  ): Promise<DailyProgressUploadResponse> {
     const formData = new FormData();
     formData.append('participant_id', data.participant_id.toString());
     formData.append('date', data.date);
@@ -149,6 +152,12 @@ class ApiClient {
     const response = await this.client.post('/participants/daily-progress/upload/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
+      },
+      onUploadProgress: (progressEvent) => {
+        if (progressEvent.total && onUploadProgress) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          onUploadProgress(percentCompleted);
+        }
       },
     });
     return response.data;
