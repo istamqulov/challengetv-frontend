@@ -66,6 +66,30 @@ function App() {
             }
           />
           <Route
+            path="/challenges/:slug/participants"
+            element={
+              <Layout>
+                <ChallengeDetailPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/challenges/:slug/progress"
+            element={
+              <Layout>
+                <ChallengeDetailPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/challenges/:slug/send"
+            element={
+              <Layout>
+                <ChallengeDetailPage />
+              </Layout>
+            }
+          />
+          <Route
             path="/challenges/:slug"
             element={
               <Layout>

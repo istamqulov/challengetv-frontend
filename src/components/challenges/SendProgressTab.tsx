@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Activity, 
   Plus, 
@@ -9,8 +9,7 @@ import {
   Target,
   Zap,
   FileImage,
-  Video,
-  Type
+  Video
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -21,13 +20,13 @@ import { useAuthStore } from '@/stores/authStore';
 import type { 
   Challenge, 
   DailyProgressUploadItem, 
-  Activity as ActivityType,
   Participant 
 } from '@/types/api';
 import { getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil, formatLocalDate } from '@/lib/utils';
 
 export const SendProgressTab: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [participant, setParticipant] = useState<Participant | null>(null);
@@ -57,7 +56,7 @@ export const SendProgressTab: React.FC = () => {
     {
       activity: 0,
       quantity: 0,
-      type: 'text',
+      type: 'photo',
       description: '',
     }
   ]);
@@ -66,6 +65,7 @@ export const SendProgressTab: React.FC = () => {
   const [requiredHp, setRequiredHp] = useState(0);
   const [overflowHp, setOverflowHp] = useState(0);
   const [overflowPercentage, setOverflowPercentage] = useState(0);
+  const [existingProgressHp, setExistingProgressHp] = useState(0);
 
   useEffect(() => {
     if (slug) {
@@ -74,8 +74,12 @@ export const SendProgressTab: React.FC = () => {
   }, [slug]);
 
   useEffect(() => {
+    loadExistingProgress();
+  }, [selectedDate, slug, participant]);
+
+  useEffect(() => {
     calculateTotalHp();
-  }, [progressItems, challenge]);
+  }, [progressItems, challenge, existingProgressHp]);
 
   const loadChallengeData = async () => {
     if (!slug) return;
@@ -104,10 +108,32 @@ export const SendProgressTab: React.FC = () => {
     }
   };
 
+  const loadExistingProgress = async () => {
+    if (!slug || !participant || !selectedDate) {
+      setExistingProgressHp(0);
+      return;
+    }
+
+    try {
+      const response = await apiClient.getDailyProgress(slug, participant.id);
+      const progressForDate = response.results.find(p => p.date === selectedDate);
+      
+      if (progressForDate) {
+        setExistingProgressHp(progressForDate.total_hp || 0);
+      } else {
+        setExistingProgressHp(0);
+      }
+    } catch (err) {
+      // If error, assume no existing progress
+      setExistingProgressHp(0);
+    }
+  };
+
   const calculateTotalHp = () => {
     if (!challenge) return;
 
-    let total = 0;
+    // Calculate new HP from form
+    let newHp = 0;
     progressItems.forEach(item => {
       if (item.activity && item.quantity > 0) {
         const activity = challenge.allowed_activities?.find(
@@ -115,14 +141,16 @@ export const SendProgressTab: React.FC = () => {
         );
         if (activity) {
           const hpPerUnit = parseFloat(activity.activity.hp_per_unit);
-          total += hpPerUnit * item.quantity;
+          newHp += hpPerUnit * item.quantity;
         }
       }
     });
     
+    // Total HP = existing HP + new HP from form
+    const total = existingProgressHp + newHp;
     setTotalHp(total);
     
-    // Calculate overflow
+    // Calculate overflow (only if total exceeds required)
     const overflow = Math.max(0, total - requiredHp);
     setOverflowHp(overflow);
     
@@ -136,7 +164,7 @@ export const SendProgressTab: React.FC = () => {
     setProgressItems([...progressItems, {
       activity: 0,
       quantity: 0,
-      type: 'text',
+      type: 'photo',
       description: '',
     }]);
   };
@@ -194,8 +222,8 @@ export const SendProgressTab: React.FC = () => {
     const updated = [...progressItems];
     updated[index] = { 
       ...updated[index], 
-      file: null,
-      type: 'text'
+      file: undefined,
+      type: 'photo' // Reset to photo as default (will require user to select a file)
     };
     setProgressItems(updated);
   };
@@ -208,14 +236,23 @@ export const SendProgressTab: React.FC = () => {
       return;
     }
 
-    // Validate form
+    // Validate form - file is required
     const validItems = progressItems.filter(item => 
-      item.activity && item.quantity > 0 && 
-      (item.type === 'text' || (item.type !== 'text' && item.file))
+      item.activity && item.quantity > 0 && item.file && (item.type === 'photo' || item.type === 'video')
     );
 
     if (validItems.length === 0) {
-      setError('Добавьте хотя бы один элемент прогресса');
+      setError('Добавьте хотя бы один элемент прогресса с фото или видео');
+      return;
+    }
+
+    // Check if all items have files
+    const itemsWithoutFiles = progressItems.filter(item => 
+      item.activity && item.quantity > 0 && (!item.file || (item.type !== 'photo' && item.type !== 'video'))
+    );
+    
+    if (itemsWithoutFiles.length > 0) {
+      setError('Для каждого элемента прогресса необходимо загрузить фото или видео');
       return;
     }
 
@@ -240,10 +277,17 @@ export const SendProgressTab: React.FC = () => {
       setProgressItems([{
         activity: 0,
         quantity: 0,
-        type: 'text',
+        type: 'photo',
         description: '',
       }]);
       setUploadProgress(0);
+      
+      // Redirect to progress tab after successful submission
+      if (slug) {
+        setTimeout(() => {
+          navigate(`/challenges/${slug}/progress`, { replace: true });
+        }, 1500); // Wait 1.5 seconds to show success message
+      }
     } catch (err) {
       setError(getErrorMessage(err));
       setUploadProgress(0);
@@ -399,7 +443,14 @@ export const SendProgressTab: React.FC = () => {
               <div className="text-2xl font-bold text-primary-600 mb-1">
                 {totalHp.toFixed(1)}
               </div>
-              <div className="text-sm text-gray-600">Текущий HP</div>
+              <div className="text-sm text-gray-600">
+                Общий HP
+                {existingProgressHp > 0 && (
+                  <span className="text-xs text-gray-500 block mt-1">
+                    (было: {existingProgressHp.toFixed(1)})
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="text-center">
@@ -411,7 +462,7 @@ export const SendProgressTab: React.FC = () => {
             
             <div className="text-center">
               <div className={`text-2xl font-bold mb-1 ${
-                Math.max(0, requiredHp - totalHp) <= 0 ? 'text-green-600' : 'text-orange-600'
+                totalHp >= requiredHp ? 'text-green-600' : 'text-orange-600'
               }`}>
                 {Math.max(0, requiredHp - totalHp).toFixed(1)}
               </div>
@@ -597,22 +648,9 @@ export const SendProgressTab: React.FC = () => {
                     
                     {!item.file || item.file === null ? (
                       <div className="space-y-3">
-                        {/* Text Option */}
-                        <div className="flex items-center space-x-3">
-                          <button
-                            type="button"
-                            onClick={() => updateProgressItem(index, 'type', 'text')}
-                            className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-colors duration-200 ${
-                              item.type === 'text'
-                                ? 'border-primary-500 bg-primary-50 text-primary-700'
-                                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-                            }`}
-                          >
-                            <Type className="w-5 h-5" />
-                            <span className="font-medium">Только текст</span>
-                          </button>
+                        <div className="text-sm text-gray-600 mb-2 font-medium">
+                          * Обязательно: выберите фото или видео
                         </div>
-                        
                         {/* File Upload Options */}
                         <div className="flex space-x-3">
                           {/* Photo Upload Button */}

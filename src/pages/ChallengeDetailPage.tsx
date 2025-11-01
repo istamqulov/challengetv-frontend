@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   Calendar,
   Users,
@@ -38,7 +38,7 @@ import {
 export const ChallengeDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const { isAuthenticated } = useAuthStore();
 
   const [challenge, setChallenge] = useState<Challenge | null>(null);
@@ -58,20 +58,30 @@ export const ChallengeDetailPage: React.FC = () => {
     }
   }, [slug]);
 
-  // Set initial tab from URL parameter
+  // Set initial tab from URL path
   useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam && ['info', 'participants', 'progress', 'send'].includes(tabParam)) {
-      setActiveTab(tabParam as 'info' | 'participants' | 'progress' | 'send');
-    }
-  }, [searchParams]);
-
-  // Reset active tab if user is not authenticated or not joined and tries to access progress tabs
-  useEffect(() => {
-    if ((!isAuthenticated || !challenge?.joined) && (activeTab === 'progress' || activeTab === 'send')) {
+    const pathParts = location.pathname.split('/');
+    const tabFromPath = pathParts[pathParts.length - 1];
+    
+    if (tabFromPath === slug) {
+      // We're on /challenges/:slug (root path), default to 'info'
+      setActiveTab('info');
+    } else if (['participants', 'progress', 'send'].includes(tabFromPath)) {
+      setActiveTab(tabFromPath as 'participants' | 'progress' | 'send');
+    } else {
       setActiveTab('info');
     }
-  }, [isAuthenticated, challenge?.joined, activeTab]);
+  }, [location.pathname, slug]);
+
+  // Reset active tab if user is not authenticated or not joined and tries to access progress tabs
+  // Only check after data is loaded to avoid redirecting during page load
+  useEffect(() => {
+    if (!isLoading && challenge !== null) {
+      if ((!isAuthenticated || !challenge?.joined) && (activeTab === 'progress' || activeTab === 'send')) {
+        navigate(`/challenges/${slug}`);
+      }
+    }
+  }, [isAuthenticated, challenge?.joined, activeTab, slug, navigate, isLoading, challenge]);
 
   const loadChallengeData = async () => {
     if (!slug) return;
@@ -159,7 +169,9 @@ const handleShare = async () => {
       await loadChallengeData();
       setJoinedOptimistic(false);
       // Navigate user to progress tab to encourage immediate update
-      setActiveTab('progress');
+      if (slug) {
+        navigate(`/challenges/${slug}/progress`);
+      }
     } catch (error) {
       console.error('Error joining challenge:', error);
     } finally {
@@ -184,7 +196,9 @@ const handleShare = async () => {
       setLeaveModalOpen(false);
       // After leaving, refresh data and return to info tab
       await loadChallengeData();
-      setActiveTab('info');
+      if (slug) {
+        navigate(`/challenges/${slug}`);
+      }
     } catch (error) {
       console.error('Error leaving challenge:', error);
     } finally {
@@ -373,25 +387,35 @@ const handleShare = async () => {
                   { id: 'progress', label: 'Мой прогресс', icon: Target, shortLabel: 'Прогресс' },
                   ...(isActive ? [{ id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' }] : []),
                 ] : []),
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`
-                    flex items-center justify-center space-x-1 sm:space-x-2 py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm
-                    sm:flex-none min-w-0
-                    ${
-                      activeTab === tab.id
-                        ? 'border-primary-600 text-primary-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }
-                  `}
-                >
-                  <tab.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
-                  <span className="hidden sm:inline">{tab.label}</span>
-                  <span className="sm:hidden">{tab.shortLabel}</span>
-                </button>
-              ))}
+              ].map((tab) => {
+                const handleTabClick = () => {
+                  if (tab.id === 'info') {
+                    navigate(`/challenges/${slug}`);
+                  } else {
+                    navigate(`/challenges/${slug}/${tab.id}`);
+                  }
+                };
+                
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={handleTabClick}
+                    className={`
+                      flex items-center justify-center space-x-1 sm:space-x-2 py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-xs sm:text-sm
+                      sm:flex-none min-w-0
+                      ${
+                        activeTab === tab.id
+                          ? 'border-primary-600 text-primary-600'
+                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      }
+                    `}
+                  >
+                    <tab.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden">{tab.shortLabel}</span>
+                  </button>
+                );
+              })}
             </nav>
           </div>
         </div>

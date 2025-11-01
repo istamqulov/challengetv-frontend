@@ -151,18 +151,20 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  // Find first active challenge (started and not ended)
+  // Find first active challenge that user has joined
   const getFirstActiveChallenge = (): ChallengeList | null => {
     return challenges.find(challenge => {
-      // Challenge is active if it has started and not ended
-      return isChallengeActive(challenge.start_date, challenge.end_date);
+      // Challenge must be active (started and not ended) AND user must be joined
+      return isChallengeActive(challenge.start_date, challenge.end_date) && challenge.joined === true;
     }) || null;
   };
 
   const handleSendReport = () => {
     const firstActiveChallenge = getFirstActiveChallenge();
     if (firstActiveChallenge) {
-      navigate(`/challenges/${firstActiveChallenge.slug}?tab=send`);
+      navigate(`/challenges/${firstActiveChallenge.slug}/send`);
+    } else {
+      console.warn('No active challenge found for sending report');
     }
   };
 
