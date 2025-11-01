@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Trophy, TrendingUp, Award, Calendar, Users, Clock, ArrowRight, UserPlus, UserMinus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Trophy, TrendingUp, Award, Calendar, Users, Clock, ArrowRight, UserPlus, UserMinus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -19,6 +19,7 @@ import {
 } from '@/lib/utils';
 
 export const HomePage: React.FC = () => {
+  const navigate = useNavigate();
   const [challenges, setChallenges] = useState<ChallengeList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [joiningChallenges, setJoiningChallenges] = useState<Set<number>>(new Set());
@@ -150,31 +151,76 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  // Find first active challenge (started and not ended)
+  const getFirstActiveChallenge = (): ChallengeList | null => {
+    return challenges.find(challenge => {
+      // Challenge is active if it has started and not ended
+      return isChallengeActive(challenge.start_date, challenge.end_date);
+    }) || null;
+  };
+
+  const handleSendReport = () => {
+    const firstActiveChallenge = getFirstActiveChallenge();
+    if (firstActiveChallenge) {
+      navigate(`/challenges/${firstActiveChallenge.slug}?tab=send`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <section className="bg-primary-600 text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-6">
-              Добро пожаловать в ChallengeTV
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-gray-100">
-              Платформа для создания и участия в челленджах
-            </p>
-            <p className="text-lg mb-10 max-w-3xl mx-auto">
-              Присоединяйтесь к сообществу активных людей, создавайте свои челленджи,
-              участвуйте в существующих, зарабатывайте HP и получайте достижения!
-            </p>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link to="/challenges">
-                <Button size="lg" variant="secondary" className="w-full sm:w-auto">
-                  Смотреть челленджи
-                </Button>
-              </Link>
+      {!isAuthenticated && (
+        <section className="bg-primary-600 text-white py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <h1 className="text-5xl md:text-6xl font-bold mb-6">
+                Добро пожаловать в ChallengeTV
+              </h1>
+              <p className="text-xl md:text-2xl mb-8 text-gray-100">
+                Платформа для создания и участия в челленджах
+              </p>
+              <p className="text-lg mb-10 max-w-3xl mx-auto">
+                Присоединяйтесь к сообществу активных людей, создавайте свои челленджи,
+                участвуйте в существующих, зарабатывайте HP и получайте достижения!
+              </p>
+              <div className="flex flex-col sm:flex-row justify-center gap-4">
+                <Link to="/challenges">
+                  <Button size="lg" variant="secondary" className="w-full sm:w-auto">
+                    Смотреть челленджи
+                  </Button>
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
+
+      {/* Send Report Section */}
+      {getFirstActiveChallenge() && (
+        <section className="bg-gradient-to-r from-primary-500 to-primary-700 py-12 shadow-lg">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-white/20 rounded-full mb-6 backdrop-blur-sm">
+                <Upload className="w-10 h-10 text-white" />
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+                Отправить отчет о прогрессе
+              </h2>
+              <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
+                Быстро отправьте свой прогресс по активному челленджу
+              </p>
+              <Button 
+                size="lg" 
+                variant="secondary" 
+                className="text-xl px-10 py-6 font-bold shadow-2xl hover:scale-105 transition-transform"
+                onClick={handleSendReport}
+              >
+                <Upload className="w-7 h-7 mr-3" />
+                Отправить отчет
+              </Button>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Features Section */}
       <section className="py-16 bg-white">

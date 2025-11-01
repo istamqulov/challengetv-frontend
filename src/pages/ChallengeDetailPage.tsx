@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useSearchParams } from 'react-router-dom';
 import {
   Calendar,
   Users,
@@ -38,6 +38,7 @@ import {
 export const ChallengeDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { isAuthenticated } = useAuthStore();
 
   const [challenge, setChallenge] = useState<Challenge | null>(null);
@@ -56,6 +57,14 @@ export const ChallengeDetailPage: React.FC = () => {
       loadChallengeData();
     }
   }, [slug]);
+
+  // Set initial tab from URL parameter
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['info', 'participants', 'progress', 'send'].includes(tabParam)) {
+      setActiveTab(tabParam as 'info' | 'participants' | 'progress' | 'send');
+    }
+  }, [searchParams]);
 
   // Reset active tab if user is not authenticated or not joined and tries to access progress tabs
   useEffect(() => {
