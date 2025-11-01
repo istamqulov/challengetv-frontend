@@ -6,7 +6,7 @@ import { Loading } from '@/components/ui/Loading';
 import { CalendarTimeline } from './CalendarTimeline';
 import { SingleDayProgress } from './SingleDayProgress';
 import { apiClient } from '@/lib/api';
-import { formatLocalDate, getTodayLocalDate, parseAndFormatLocalDate } from '@/lib/utils';
+import { formatLocalDate, getTodayLocalDate, parseAndFormatLocalDate, getErrorMessage } from '@/lib/utils';
 import type { DailyProgress, Challenge, ParticipantStats } from '@/types/api';
 
 interface ProgressSectionProps {
@@ -27,6 +27,8 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   const [currentDateIndex, setCurrentDateIndex] = useState<number>(0);
   const [stats, setStats] = useState<ParticipantStats | null>(null);
   const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     loadDailyProgress();
@@ -52,6 +54,10 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
       setCurrentDateIndex(Math.max(0, dateIndex));
     }
   }, [challenge]);
+
+  useEffect(() => {
+    setActionMessage(null);
+  }, [selectedDate]);
 
   const generateChallengeDates = (startDate: string, endDate: string) => {
     const dates = [];
@@ -150,6 +156,28 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
     setSelectedDate(challengeDates[newIndex]);
   };
 
+  const handleDeleteItem = async (itemId: number) => {
+    if (!itemId) return;
+
+    const confirmed = window.confirm('Удалить эту активность? Действие нельзя отменить.');
+    if (!confirmed) {
+      return;
+    }
+
+    setActionMessage(null);
+    setDeletingItemId(itemId);
+
+    try {
+      await apiClient.deleteDailyProgressItem(itemId);
+      await loadDailyProgress();
+      setActionMessage({ type: 'success', text: 'Активность успешно удалена.' });
+    } catch (error) {
+      setActionMessage({ type: 'error', text: getErrorMessage(error) });
+    } finally {
+      setDeletingItemId(null);
+    }
+  };
+
   const getSelectedDayProgress = () => {
     return dailyProgress.find(p => p.date === selectedDate) || null;
   };
@@ -230,6 +258,7 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   const challengeDates = getChallengeDates();
   const canGoPrevious = currentDateIndex > 0;
   const canGoNext = currentDateIndex < challengeDates.length - 1;
+  const isOwnProgress = participantId === undefined;
 
   return (
     <div>
@@ -385,6 +414,10 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
         dailyProgress={getSelectedDayProgress()}
         selectedDate={selectedDate}
         isLoading={isLoading}
+        onDeleteItem={isOwnProgress ? handleDeleteItem : undefined}
+        isOwnProgress={isOwnProgress}
+        deletingItemId={deletingItemId}
+        actionMessage={isOwnProgress ? actionMessage : null}
       />
     </div>
   );

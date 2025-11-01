@@ -9,12 +9,20 @@ interface SingleDayProgressProps {
   dailyProgress: DailyProgress | null;
   selectedDate: string;
   isLoading?: boolean;
+  onDeleteItem?: (itemId: number) => void;
+  isOwnProgress?: boolean;
+  deletingItemId?: number | null;
+  actionMessage?: { type: 'success' | 'error'; text: string } | null;
 }
 
 export const SingleDayProgress: React.FC<SingleDayProgressProps> = ({ 
   dailyProgress, 
   selectedDate,
-  isLoading = false 
+  isLoading = false,
+  onDeleteItem,
+  isOwnProgress = false,
+  deletingItemId,
+  actionMessage = null,
 }) => {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -30,6 +38,12 @@ export const SingleDayProgress: React.FC<SingleDayProgressProps> = ({
       year: 'numeric',
       weekday: 'long',
     });
+  };
+
+  const handleItemDelete = (itemId: number) => {
+    if (onDeleteItem) {
+      onDeleteItem(itemId);
+    }
   };
 
   const getCompletionStatus = () => {
@@ -100,6 +114,17 @@ export const SingleDayProgress: React.FC<SingleDayProgressProps> = ({
 
   return (
     <Card>
+      {actionMessage && (
+        <div
+          className={`mx-6 mt-6 p-4 rounded-lg border ${
+            actionMessage.type === 'success'
+              ? 'bg-green-50 border-green-200 text-green-700'
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}
+        >
+          {actionMessage.text}
+        </div>
+      )}
       {/* Header */}
       <div className="p-6 border-b border-gray-200">
         <div className="flex items-center justify-between mb-4">
@@ -166,7 +191,13 @@ export const SingleDayProgress: React.FC<SingleDayProgressProps> = ({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {dailyProgress.items.map((item) => (
-                <DailyProgressItem key={item.id} item={item} />
+                <DailyProgressItem
+                  key={item.id}
+                  item={item}
+                  onDelete={isOwnProgress ? handleItemDelete : undefined}
+                  isOwnProgress={isOwnProgress}
+                  isDeleting={deletingItemId === item.id}
+                />
               ))}
             </div>
           </div>

@@ -8,6 +8,7 @@ import { TopPage } from '@/pages/TopPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { ParticipantProgressPage } from '@/pages/ParticipantProgressPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -62,6 +63,14 @@ function App() {
             element={
               <Layout>
                 <ChallengesPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/challenges/:slug/participants/:participantId/progress"
+            element={
+              <Layout>
+                <ParticipantProgressPage />
               </Layout>
             }
           />

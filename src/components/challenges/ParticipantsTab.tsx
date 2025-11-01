@@ -1,12 +1,11 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Users, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { Modal } from '@/components/ui/Modal';
 import { Avatar } from '@/components/ui/Avatar';
-import { ProgressSection } from './ProgressSection';
-import type { Participant } from '@/types/api';
+import type { Participant, Challenge } from '@/types/api';
 import { formatDate } from '@/lib/utils';
 
 interface ParticipantsTabProps {
@@ -22,8 +21,7 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
   challengeSlug,
   challenge,
 }) => {
-  const [selectedParticipant, setSelectedParticipant] = useState<Participant | null>(null);
-  const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   const getLevelDetails = (participant: Participant) => {
     // Now challenge_level is already an object, so we can return it directly
@@ -31,8 +29,7 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
   };
 
   const handleViewProgress = (participant: Participant) => {
-    setSelectedParticipant(participant);
-    setIsProgressModalOpen(true);
+    navigate(`/challenges/${challengeSlug}/participants/${participant.id}/progress`);
   };
 
   return (
@@ -171,22 +168,6 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
           Пока нет участников
         </p>
       )}
-
-      {/* Progress Modal */}
-      <Modal
-        isOpen={isProgressModalOpen}
-        onClose={() => setIsProgressModalOpen(false)}
-        title={selectedParticipant ? `Прогресс ${selectedParticipant.user.username}` : 'Прогресс участника'}
-        size="large"
-      >
-        {selectedParticipant && (
-          <ProgressSection
-            challengeSlug={challengeSlug}
-            participantId={selectedParticipant.id}
-            challenge={challenge}
-          />
-        )}
-      </Modal>
     </Card>
   );
 };

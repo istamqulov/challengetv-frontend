@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle, Clock, XCircle, Camera, Video, FileText } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, Camera, Video, FileText, Trash2, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Modal } from '@/components/ui/Modal';
@@ -7,9 +7,12 @@ import type { DailyProgressItem as DailyProgressItemType } from '@/types/api';
 
 interface DailyProgressItemProps {
   item: DailyProgressItemType;
+  onDelete?: (itemId: number) => void;
+  isOwnProgress?: boolean;
+  isDeleting?: boolean;
 }
 
-export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item }) => {
+export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item, onDelete, isOwnProgress = false, isDeleting = false }) => {
   const [isMediaModalOpen, setIsMediaModalOpen] = useState(false);
   const [modalMediaType, setModalMediaType] = useState<'photo' | 'video' | null>(null);
 
@@ -71,6 +74,13 @@ export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item }) =>
     });
   };
 
+  const handleDeleteClick = () => {
+    if (isDeleting) return;
+    if (onDelete) {
+      onDelete(item.id);
+    }
+  };
+
   return (
     <Card className="p-4">
       <div className="flex items-start justify-between mb-3">
@@ -81,8 +91,26 @@ export const DailyProgressItem: React.FC<DailyProgressItemProps> = ({ item }) =>
           </span>
         </div>
         <div className="flex items-center space-x-2">
-          {getStatusIcon()}
-          {getStatusBadge()}
+          <div className="flex items-center space-x-2">
+            {getStatusIcon()}
+            {getStatusBadge()}
+          </div>
+          {isOwnProgress && onDelete && (
+            <button
+              type="button"
+              onClick={handleDeleteClick}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-red-200 text-red-500 hover:text-red-600 hover:border-red-300 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Удалить активность"
+              aria-label="Удалить активность"
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4" />
+              )}
+            </button>
+          )}
         </div>
       </div>
 

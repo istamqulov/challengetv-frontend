@@ -124,6 +124,10 @@ class ApiClient {
     return response.data;
   }
 
+  async deleteDailyProgressItem(itemId: number): Promise<void> {
+    await this.client.delete(`/participants/daily-progress-items/${itemId}/delete/`);
+  }
+
   async uploadDailyProgress(
     data: DailyProgressUploadRequest,
     onUploadProgress?: (progress: number) => void
