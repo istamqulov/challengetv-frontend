@@ -3,6 +3,9 @@ import { twMerge } from 'tailwind-merge';
 import { format, parseISO, differenceInDays, isBefore, isAfter } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
+// Re-export parseISO for use in other components
+export { parseISO };
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }

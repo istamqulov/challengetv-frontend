@@ -207,6 +207,8 @@ export interface Participant {
   days_completed: number;
   days_total: number;
   completed_at?: string | null;
+  daily_progress?: DailyProgress[];
+  statistics?: any;
 }
 
 // Daily Progress Types

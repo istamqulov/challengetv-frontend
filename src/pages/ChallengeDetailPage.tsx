@@ -12,12 +12,14 @@ import {
   Activity,
   UserPlus,
   UserMinus,
+  Table,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Loading } from '@/components/ui/Loading';
 import { ParticipantsTab } from '@/components/challenges/ParticipantsTab';
+import { ProgressTableTab } from '@/components/challenges/ProgressTableTab';
 import { MyProgressTab } from '@/components/challenges/MyProgressTab';
 import { SendProgressTab } from '@/components/challenges/SendProgressTab';
 import { JoinChallengeModal } from '@/components/challenges/JoinChallengeModal';
@@ -46,7 +48,7 @@ export const ChallengeDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [participantsLoading, setParticipantsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'progress' | 'send'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'table' | 'progress' | 'send'>('info');
   const [isJoining, setIsJoining] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -66,8 +68,8 @@ export const ChallengeDetailPage: React.FC = () => {
     if (tabFromPath === slug) {
       // We're on /challenges/:slug (root path), default to 'info'
       setActiveTab('info');
-    } else if (['participants', 'progress', 'send'].includes(tabFromPath)) {
-      setActiveTab(tabFromPath as 'participants' | 'progress' | 'send');
+    } else if (['participants', 'table', 'progress', 'send'].includes(tabFromPath)) {
+      setActiveTab(tabFromPath as 'participants' | 'table' | 'progress' | 'send');
     } else {
       setActiveTab('info');
     }
@@ -383,6 +385,7 @@ const handleShare = async () => {
               {[
                 { id: 'info', label: 'Информация', icon: Trophy, shortLabel: 'Инфо' },
                 { id: 'participants', label: 'Участники', icon: Users, shortLabel: 'Участники' },
+                { id: 'table', label: 'Таблица', icon: Table, shortLabel: 'Таблица' },
                 ...(isAuthenticated && challenge?.joined ? [
                   { id: 'progress', label: 'Мой прогресс', icon: Target, shortLabel: 'Прогресс' },
                   ...(isActive ? [{ id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' }] : []),
@@ -592,6 +595,8 @@ const handleShare = async () => {
               challenge={challenge}
             />
           )}
+
+          {activeTab === 'table' && <ProgressTableTab challenge={challenge} />}
 
           {activeTab === 'progress' && isAuthenticated && <MyProgressTab challenge={challenge} />}
 

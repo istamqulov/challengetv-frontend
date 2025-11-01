@@ -42,8 +42,9 @@ class ApiClient {
     return response.data;
   }
 
-  async getChallengeParticipants(slug: string): Promise<Participant[]> {
-    const response = await this.client.get(`/challenges/${slug}/participants/`);
+  async getChallengeParticipants(slug: string, expand?: string): Promise<Participant[]> {
+    const params = expand ? { expand } : {};
+    const response = await this.client.get(`/challenges/${slug}/participants/`, { params });
     // Handle paginated response
     if (response.data.results) {
       return response.data.results;

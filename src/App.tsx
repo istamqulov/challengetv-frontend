@@ -74,6 +74,14 @@ function App() {
             }
           />
           <Route
+            path="/challenges/:slug/table"
+            element={
+              <Layout>
+                <ChallengeDetailPage />
+              </Layout>
+            }
+          />
+          <Route
             path="/challenges/:slug/progress"
             element={
               <Layout>
