@@ -197,12 +197,10 @@ export const SendProgressTab: React.FC = () => {
         setError(`Неподдерживаемый формат файла. Для фото разрешены: JPG, PNG`);
         return;
       }
-      
-      if (type === 'video' && fileExtension !== 'mp4') {
-        setError(`Неподдерживаемый формат файла. Для видео разрешен: MP4`);
+      if (type === 'video' && !['mp4', 'mov', 'mkv'].includes(fileExtension || '')) {
+        setError(`Неподдерживаемый формат файла. Для видео разрешены: MP4, MOV, MKV`);
         return;
       }
-      
       // Update both file and type in one operation
       const updated = [...progressItems];
       updated[index] = { 
@@ -681,7 +679,7 @@ export const SendProgressTab: React.FC = () => {
                           <input
                             type="file"
                             id={`video-${index}`}
-                            accept="video/mp4"
+                            accept=".mp4,.mov,.mkv"
                             onChange={(e) => {
                               handleFileChange(index, e.target.files?.[0] || null, 'video');
                               // Reset input value to allow selecting the same file again
@@ -695,7 +693,7 @@ export const SendProgressTab: React.FC = () => {
                             >
                               <Video className="w-8 h-8 text-gray-400 mb-2" />
                               <span className="text-sm font-medium text-gray-600">Видео</span>
-                              <span className="text-xs text-gray-500">MP4</span>
+                              <span className="text-xs text-gray-500">MP4, MOV</span>
                             </label>
                           </div>
                         </div>
