@@ -59,16 +59,15 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
     const startParts = startDate.split('-').map(Number);
     const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
     
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     // Parse end date in local timezone
     const endParts = endDate.split('-').map(Number);
     const endDateLocal = new Date(endParts[0], endParts[1] - 1, endParts[2]);
     
-    // Use the earlier of challenge end date or tomorrow
-    const end = new Date(Math.min(endDateLocal.getTime(), tomorrow.getTime()));
+    // Use the earlier of challenge end date or today (exclude tomorrow)
+    const end = new Date(Math.min(endDateLocal.getTime(), today.getTime()));
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(formatLocalDate(d));
