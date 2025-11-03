@@ -133,10 +133,14 @@ export const SendProgressTab: React.FC = () => {
 
   const getQuantityValue = (item: ProgressItemForm): number => {
     if (typeof item.quantity === 'number') {
-      return item.quantity;
+      return Math.trunc(item.quantity);
     }
-    const normalized = (item.quantity || '').replace(',', '.');
-    const parsed = parseFloat(normalized);
+    const match = (item.quantity || '').trim().match(/\d+/);
+    const normalized = match ? match[0] : '';
+    if (!normalized) {
+      return 0;
+    }
+    const parsed = parseInt(normalized, 10);
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
@@ -556,15 +560,15 @@ export const SendProgressTab: React.FC = () => {
             </Button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {progressItems.map((item, index) => (
-              <div key={index} className="bg-white border-2 border-gray-100 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                      <span className="text-primary-600 font-bold text-sm">{index + 1}</span>
+              <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-7 h-7 bg-primary-100 rounded-full flex items-center justify-center">
+                      <span className="text-primary-600 font-bold text-xs">{index + 1}</span>
                     </div>
-                    <h4 className="text-lg font-semibold text-gray-900">Элемент прогресса</h4>
+                    <h4 className="text-base font-semibold text-gray-900">Элемент прогресса</h4>
                   </div>
                   {progressItems.length > 1 && (
                     <Button
@@ -572,7 +576,7 @@ export const SendProgressTab: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       onClick={() => removeProgressItem(index)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -580,31 +584,31 @@ export const SendProgressTab: React.FC = () => {
                 </div>
 
                 {/* Activity Selection */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
                     Выберите активность
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {challenge?.allowed_activities?.map((allowedActivity) => (
                       <div
                         key={allowedActivity.id}
                         onClick={() => updateProgressItem(index, 'activity', allowedActivity.activity.id)}
-                        className={`relative p-4 border-2 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-lg group ${
+                        className={`relative p-3 border rounded-lg cursor-pointer transition-all duration-300 hover:shadow-md group ${
                           item.activity === allowedActivity.activity.id
-                            ? 'border-primary-500 bg-gradient-to-br from-primary-50 to-primary-100 shadow-lg scale-105'
-                            : 'border-gray-200 bg-white hover:border-primary-300 hover:shadow-md'
+                            ? 'border-primary-400 bg-gradient-to-br from-primary-50 to-primary-100 shadow-md scale-[1.02]'
+                            : 'border-gray-200 bg-white hover:border-primary-300'
                         }`}
                       >
                         {/* Selection indicator */}
                         {item.activity === allowedActivity.activity.id && (
-                          <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">✓</span>
+                          <div className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-[10px] font-bold">✓</span>
                           </div>
                         )}
                         
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
-                            <h4 className="font-bold text-gray-900 text-sm mb-1">
+                            <h4 className="font-semibold text-gray-900 text-sm mb-1">
                               {allowedActivity.activity.name}
                             </h4>
                             <div className="text-xs text-gray-500">
@@ -616,31 +620,31 @@ export const SendProgressTab: React.FC = () => {
                               <img 
                                 src={allowedActivity.activity.icon} 
                                 alt={allowedActivity.activity.name}
-                                className="w-8 h-8 object-contain"
+                                className="w-7 h-7 object-contain"
                               />
                             </div>
                           )}
                         </div>
                         
-                        <div className="bg-white/60 rounded-lg p-2">
+                        <div className="bg-white/70 rounded-md p-2">
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-medium text-gray-600">
                               HP за единицу:
                             </span>
-                            <span className="text-lg font-bold text-primary-600">
+                            <span className="text-base font-bold text-primary-600">
                               {allowedActivity.activity.hp_per_unit}
                             </span>
                           </div>
                         </div>
                         
                         {/* Hover effect */}
-                        <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                        <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-primary-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
                   {/* Quantity */}
                   <div>
@@ -650,7 +654,9 @@ export const SendProgressTab: React.FC = () => {
                     <Input
                       type="number"
                       min="0"
-                      step="0.1"
+                      step="1"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={item.quantity}
                       onChange={(e) => updateProgressItem(index, 'quantity', e.target.value)}
                       placeholder="Введите количество"
@@ -660,18 +666,18 @@ export const SendProgressTab: React.FC = () => {
 
                   {/* File Upload */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       <Upload className="w-4 h-4 inline mr-2" />
                       Загрузить файл
                     </label>
                     
                     {!item.file || item.file === null ? (
-                      <div className="space-y-3">
-                        <div className="text-sm text-gray-600 mb-2 font-medium">
+                      <div className="space-y-2.5">
+                        <div className="text-xs text-gray-600 mb-1 font-medium">
                           * Обязательно: выберите фото или видео
                         </div>
                         {/* File Upload Options */}
-                        <div className="flex space-x-3">
+                        <div className="flex space-x-2.5">
                           {/* Photo Upload Button */}
                           <div className="flex-1">
                           <input
@@ -687,9 +693,9 @@ export const SendProgressTab: React.FC = () => {
                           />
                             <label
                               htmlFor={`photo-${index}`}
-                              className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors duration-200"
+                              className="flex flex-col items-center justify-center w-full h-20 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors duration-200"
                             >
-                              <FileImage className="w-8 h-8 text-gray-400 mb-2" />
+                              <FileImage className="w-7 h-7 text-gray-400 mb-1.5" />
                               <span className="text-sm font-medium text-gray-600">Фото</span>
                               <span className="text-xs text-gray-500">JPG, PNG</span>
                             </label>
@@ -710,9 +716,9 @@ export const SendProgressTab: React.FC = () => {
                           />
                             <label
                               htmlFor={`video-${index}`}
-                              className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors duration-200"
+                              className="flex flex-col items-center justify-center w-full h-20 border border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors duration-200"
                             >
-                              <Video className="w-8 h-8 text-gray-400 mb-2" />
+                              <Video className="w-7 h-7 text-gray-400 mb-1.5" />
                               <span className="text-sm font-medium text-gray-600">Видео</span>
                               <span className="text-xs text-gray-500">MP4, MOV</span>
                             </label>
@@ -720,9 +726,9 @@ export const SendProgressTab: React.FC = () => {
                         </div>
                       </div>
                     ) : (
-                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                      <div className="p-3 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2">
                             {item.type === 'photo' ? (
                               <FileImage className="w-6 h-6 text-green-600" />
                             ) : (
@@ -771,7 +777,7 @@ export const SendProgressTab: React.FC = () => {
 
                 {/* HP Preview */}
                 {item.activity && getQuantityValue(item) > 0 && (
-                  <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                  <div className="mt-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Zap className="w-5 h-5 text-blue-600" />
@@ -780,13 +786,13 @@ export const SendProgressTab: React.FC = () => {
                         </span>
                       </div>
                       <div className="text-right">
-                        <span className="text-2xl font-bold text-blue-600">
+                        <span className="text-xl font-bold text-blue-600">
                           {getItemHp(item).toFixed(1)}
                         </span>
                         <span className="text-sm text-blue-500 ml-1">HP</span>
                       </div>
                     </div>
-                    <div className="mt-2 text-xs text-blue-600">
+                    <div className="mt-1.5 text-xs text-blue-600">
                       {item.quantity || '—'} × {getActivityHpPerUnit(item.activity)} HP = {getItemHp(item).toFixed(1)} HP
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -28,23 +28,25 @@ export const CalendarTimeline: React.FC<CalendarTimelineProps> = ({
   challengeStartDate,
   challengeEndDate,
 }) => {
-  // Generate all dates between challenge start and tomorrow
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const todayButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  // Generate all dates between challenge start and today
   const generateChallengeDates = () => {
     const dates = [];
     // Parse dates in local timezone
     const startParts = challengeStartDate.split('-').map(Number);
     const start = new Date(startParts[0], startParts[1] - 1, startParts[2]);
     
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     // Parse end date in local timezone
     const endParts = challengeEndDate.split('-').map(Number);
     const endDateLocal = new Date(endParts[0], endParts[1] - 1, endParts[2]);
     
-    // Use the earlier of challenge end date or tomorrow
-    const end = new Date(Math.min(endDateLocal.getTime(), tomorrow.getTime()));
+    // Use the earlier of challenge end date or today
+    const end = new Date(Math.min(endDateLocal.getTime(), today.getTime()));
     
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
       dates.push(formatLocalDate(d));
@@ -55,6 +57,7 @@ export const CalendarTimeline: React.FC<CalendarTimelineProps> = ({
 
   const challengeDates = generateChallengeDates();
   const progressMap = new Map(dailyProgress.map(p => [p.date, p]));
+  const todayDate = formatLocalDate(new Date());
 
   const formatDateForDisplay = (dateString: string) => {
     const date = new Date(dateString);
@@ -110,6 +113,22 @@ export const CalendarTimeline: React.FC<CalendarTimelineProps> = ({
     }
   };
 
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    const todayElement = todayButtonRef.current;
+
+    if (!container) {
+      return;
+    }
+
+    const targetElement = todayElement || container.querySelector<HTMLButtonElement>('button[data-selected="true"]');
+
+    if (targetElement) {
+      const offsetLeft = targetElement.offsetLeft - container.clientWidth / 2 + targetElement.clientWidth / 2;
+      container.scrollTo({ left: Math.max(offsetLeft, 0), behavior: 'smooth' });
+    }
+  }, [challengeDates.length, selectedDate, todayDate]);
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
       {/* Navigation Controls */}
@@ -150,17 +169,20 @@ export const CalendarTimeline: React.FC<CalendarTimelineProps> = ({
       </div>
 
       {/* Timeline */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" ref={scrollContainerRef}>
         <div className="flex space-x-2 min-w-max">
           {challengeDates.map((dateString) => {
             const status = getDateStatus(dateString);
             const isSelected = dateString === selectedDate;
             const dateInfo = formatDateForDisplay(dateString);
+            const isToday = dateString === todayDate;
             
             return (
               <button
                 key={dateString}
+                ref={isToday ? todayButtonRef : null}
                 onClick={() => onDateSelect(dateString)}
+                data-selected={isSelected ? 'true' : undefined}
                 className={`
                   flex flex-col items-center p-3 rounded-lg border-2 transition-all duration-200 min-w-[60px]
                   ${isSelected 
