@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -12,10 +12,13 @@ import type { Challenge, Participant } from '@/types/api';
 export const ParticipantProgressPage: React.FC = () => {
   const { slug, participantId } = useParams<{ slug: string; participantId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [participant, setParticipant] = useState<Participant | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = new URLSearchParams(location.search);
+  const initialSelectedDate = searchParams.get('date') || undefined;
 
   useEffect(() => {
     if (slug && participantId) {
@@ -113,6 +116,7 @@ export const ParticipantProgressPage: React.FC = () => {
         challengeSlug={slug}
         participantId={participant.id}
         challenge={challenge}
+        initialSelectedDate={initialSelectedDate}
       />
     </div>
   );

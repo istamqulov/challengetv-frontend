@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Table } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Loading } from '@/components/ui/Loading';
 import { apiClient } from '@/lib/api';
 import type { Participant, Challenge } from '@/types/api';
-import { getErrorMessage, formatDate, formatLocalDate, parseISO } from '@/lib/utils';
+import { parseISO } from 'date-fns';
+import { getErrorMessage, formatDate, formatLocalDate } from '@/lib/utils';
 
 interface ProgressTableTabProps {
   challenge?: Challenge;
@@ -21,6 +22,7 @@ export const ProgressTableTab: React.FC<ProgressTableTabProps> = ({ challenge })
   const tableRef = useRef<HTMLTableElement>(null);
   const isSyncingRef = useRef(false);
   const [tableWidth, setTableWidth] = useState(0);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (slug) {
@@ -231,6 +233,7 @@ export const ProgressTableTab: React.FC<ProgressTableTabProps> = ({ challenge })
                   </td>
                   {participants.map((participant) => {
                     const progress = getHpForDate(participant, date);
+                    const isClickable = progress !== null;
                     
                     if (!isPassed) {
                       return (
@@ -260,7 +263,13 @@ export const ProgressTableTab: React.FC<ProgressTableTabProps> = ({ challenge })
                     return (
                       <td
                         key={participant.id}
-                        className={`border border-gray-300 px-4 py-2 text-center font-medium ${cellClass}`}
+                        className={`border border-gray-300 px-4 py-2 text-center font-medium ${cellClass} ${isClickable ? 'cursor-pointer hover:opacity-80 transition' : ''}`}
+                        onClick={() => {
+                          if (isClickable) {
+                            const targetDate = encodeURIComponent(date);
+                            navigate(`/challenges/${slug}/participants/${participant.id}/progress?date=${targetDate}`);
+                          }
+                        }}
                       >
                         {hp.toFixed(0)}
                       </td>

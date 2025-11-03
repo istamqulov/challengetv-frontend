@@ -13,12 +13,14 @@ interface ProgressSectionProps {
   challengeSlug: string;
   participantId?: number; // If provided, shows progress for specific participant
   challenge?: Challenge; // Challenge data for timeline
+  initialSelectedDate?: string;
 }
 
 export const ProgressSection: React.FC<ProgressSectionProps> = ({ 
   challengeSlug, 
   participantId,
-  challenge
+  challenge,
+  initialSelectedDate
 }) => {
   const [dailyProgress, setDailyProgress] = useState<DailyProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,24 +38,32 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   }, [challengeSlug, participantId]);
 
   useEffect(() => {
-    if (challenge) {
-      // Set initial selected date to today or the most recent progress date
-      const today = getTodayLocalDate();
-      const challengeStart = parseAndFormatLocalDate(challenge.start_date);
-      const challengeEnd = parseAndFormatLocalDate(challenge.end_date);
-      
-      let initialDate = today;
-      if (today < challengeStart) initialDate = challengeStart;
-      if (today > challengeEnd) initialDate = challengeEnd;
-      
-      setSelectedDate(initialDate);
-      
-      // Find the index of the selected date in the challenge timeline
-      const challengeDates = generateChallengeDates(challenge.start_date, challenge.end_date);
-      const dateIndex = challengeDates.findIndex(date => date === initialDate);
-      setCurrentDateIndex(Math.max(0, dateIndex));
+    if (!challenge) return;
+
+    const challengeDates = generateChallengeDates(challenge.start_date, challenge.end_date);
+    if (challengeDates.length === 0) {
+      return;
     }
-  }, [challenge]);
+
+    const today = getTodayLocalDate();
+    const challengeStart = parseAndFormatLocalDate(challenge.start_date);
+    const challengeEnd = parseAndFormatLocalDate(challenge.end_date);
+
+    let initialDate = initialSelectedDate && challengeDates.includes(initialSelectedDate)
+      ? initialSelectedDate
+      : today;
+
+    if (initialDate < challengeStart) initialDate = challengeStart;
+    if (initialDate > challengeEnd) initialDate = challengeEnd;
+
+    if (!challengeDates.includes(initialDate)) {
+      initialDate = challengeDates[challengeDates.length - 1];
+    }
+
+    setSelectedDate(initialDate);
+    const dateIndex = challengeDates.findIndex(date => date === initialDate);
+    setCurrentDateIndex(Math.max(0, dateIndex));
+  }, [challenge, initialSelectedDate]);
 
   useEffect(() => {
     setActionMessage(null);
