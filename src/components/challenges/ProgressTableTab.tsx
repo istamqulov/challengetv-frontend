@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Table } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -16,6 +16,11 @@ export const ProgressTableTab: React.FC<ProgressTableTabProps> = ({ challenge })
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const topScrollRef = useRef<HTMLDivElement>(null);
+  const bottomScrollRef = useRef<HTMLDivElement>(null);
+  const tableRef = useRef<HTMLTableElement>(null);
+  const isSyncingRef = useRef(false);
+  const [tableWidth, setTableWidth] = useState(0);
 
   useEffect(() => {
     if (slug) {
@@ -37,6 +42,44 @@ export const ProgressTableTab: React.FC<ProgressTableTabProps> = ({ challenge })
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const updateTableWidth = useCallback(() => {
+    if (tableRef.current) {
+      setTableWidth(tableRef.current.scrollWidth);
+    }
+  }, []);
+
+  useEffect(() => {
+    updateTableWidth();
+  }, [participants, challenge, updateTableWidth]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      updateTableWidth();
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [updateTableWidth]);
+
+  const handleTopScroll = () => {
+    if (!topScrollRef.current || !bottomScrollRef.current) return;
+    if (isSyncingRef.current) {
+      isSyncingRef.current = false;
+      return;
+    }
+    isSyncingRef.current = true;
+    bottomScrollRef.current.scrollLeft = topScrollRef.current.scrollLeft;
+  };
+
+  const handleBottomScroll = () => {
+    if (!topScrollRef.current || !bottomScrollRef.current) return;
+    if (isSyncingRef.current) {
+      isSyncingRef.current = false;
+      return;
+    }
+    isSyncingRef.current = true;
+    topScrollRef.current.scrollLeft = bottomScrollRef.current.scrollLeft;
   };
 
   // Generate all dates for the challenge
@@ -129,8 +172,25 @@ export const ProgressTableTab: React.FC<ProgressTableTabProps> = ({ challenge })
         Таблица прогресса
       </h2>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse border border-gray-300">
+      <div
+        ref={topScrollRef}
+        className="overflow-x-auto mb-3"
+        onScroll={handleTopScroll}
+      >
+        <div
+          style={{
+            width: Math.max(tableWidth, 1),
+            height: 16,
+          }}
+        />
+      </div>
+
+      <div
+        ref={bottomScrollRef}
+        className="overflow-x-auto"
+        onScroll={handleBottomScroll}
+      >
+        <table ref={tableRef} className="min-w-full border-collapse border border-gray-300">
           <thead>
             <tr>
               <th className="border border-gray-300 bg-gray-100 px-4 py-3 text-left font-semibold text-gray-700 sticky left-0 z-10 bg-gray-100">
