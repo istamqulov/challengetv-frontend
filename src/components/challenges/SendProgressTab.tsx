@@ -22,6 +22,8 @@ import type {
   DailyProgressUploadItem, 
   Participant 
 } from '@/types/api';
+
+type ProgressItemForm = Omit<DailyProgressUploadItem, 'quantity'> & { quantity: string };
 import { getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil, formatLocalDate } from '@/lib/utils';
 
 export const SendProgressTab: React.FC = () => {
@@ -52,10 +54,10 @@ export const SendProgressTab: React.FC = () => {
     ];
   };
   
-  const [progressItems, setProgressItems] = useState<DailyProgressUploadItem[]>([
+  const [progressItems, setProgressItems] = useState<ProgressItemForm[]>([
     {
       activity: 0,
-      quantity: 0,
+      quantity: '',
       type: 'photo',
       description: '',
     }
@@ -129,19 +131,29 @@ export const SendProgressTab: React.FC = () => {
     }
   };
 
+  const getQuantityValue = (item: ProgressItemForm): number => {
+    if (typeof item.quantity === 'number') {
+      return item.quantity;
+    }
+    const normalized = (item.quantity || '').replace(',', '.');
+    const parsed = parseFloat(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+
   const calculateTotalHp = () => {
     if (!challenge) return;
 
     // Calculate new HP from form
     let newHp = 0;
     progressItems.forEach(item => {
-      if (item.activity && item.quantity > 0) {
+      const quantityValue = getQuantityValue(item);
+      if (item.activity && quantityValue > 0) {
         const activity = challenge.allowed_activities?.find(
           allowedActivity => allowedActivity.activity.id === item.activity
         );
         if (activity) {
           const hpPerUnit = parseFloat(activity.activity.hp_per_unit);
-          newHp += hpPerUnit * item.quantity;
+          newHp += hpPerUnit * quantityValue;
         }
       }
     });
@@ -163,7 +175,7 @@ export const SendProgressTab: React.FC = () => {
   const addProgressItem = () => {
     setProgressItems([...progressItems, {
       activity: 0,
-      quantity: 0,
+      quantity: '',
       type: 'photo',
       description: '',
     }]);
@@ -175,7 +187,7 @@ export const SendProgressTab: React.FC = () => {
     }
   };
 
-  const updateProgressItem = (index: number, field: keyof DailyProgressUploadItem, value: any) => {
+  const updateProgressItem = (index: number, field: keyof ProgressItemForm, value: any) => {
     const updated = [...progressItems];
     updated[index] = { ...updated[index], [field]: value };
     setProgressItems(updated);
@@ -235,7 +247,15 @@ export const SendProgressTab: React.FC = () => {
     }
 
     // Validate form - file is required
-    const validItems = progressItems.filter(item => 
+    const normalizedItems: DailyProgressUploadItem[] = progressItems.map(item => ({
+      activity: item.activity,
+      quantity: getQuantityValue(item),
+      type: item.type,
+      file: item.file,
+      description: item.description,
+    }));
+
+    const validItems = normalizedItems.filter(item => 
       item.activity && item.quantity > 0 && item.file && (item.type === 'photo' || item.type === 'video')
     );
 
@@ -245,7 +265,7 @@ export const SendProgressTab: React.FC = () => {
     }
 
     // Check if all items have files
-    const itemsWithoutFiles = progressItems.filter(item => 
+    const itemsWithoutFiles = normalizedItems.filter(item => 
       item.activity && item.quantity > 0 && (!item.file || (item.type !== 'photo' && item.type !== 'video'))
     );
     
@@ -274,7 +294,7 @@ export const SendProgressTab: React.FC = () => {
       setSuccess(`${response.message} Создано элементов: ${response.items_created}, HP: ${response.total_hp}/${response.required_hp}`);
       setProgressItems([{
         activity: 0,
-        quantity: 0,
+        quantity: '',
         type: 'photo',
         description: '',
       }]);
@@ -302,9 +322,10 @@ export const SendProgressTab: React.FC = () => {
     return activity ? parseFloat(activity.activity.hp_per_unit) : 0;
   };
 
-  const getItemHp = (item: DailyProgressUploadItem): number => {
-    if (!item.activity || !item.quantity) return 0;
-    return getActivityHpPerUnit(item.activity) * item.quantity;
+  const getItemHp = (item: ProgressItemForm): number => {
+    const quantityValue = getQuantityValue(item);
+    if (!item.activity || !quantityValue) return 0;
+    return getActivityHpPerUnit(item.activity) * quantityValue;
   };
 
   if (isLoading) {
@@ -631,7 +652,7 @@ export const SendProgressTab: React.FC = () => {
                       min="0"
                       step="0.1"
                       value={item.quantity}
-                      onChange={(e) => updateProgressItem(index, 'quantity', parseFloat(e.target.value) || 0)}
+                      onChange={(e) => updateProgressItem(index, 'quantity', e.target.value)}
                       placeholder="Введите количество"
                       required
                     />
@@ -749,7 +770,7 @@ export const SendProgressTab: React.FC = () => {
                 </div>
 
                 {/* HP Preview */}
-                {item.activity && item.quantity > 0 && (
+                {item.activity && getQuantityValue(item) > 0 && (
                   <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
@@ -766,7 +787,7 @@ export const SendProgressTab: React.FC = () => {
                       </div>
                     </div>
                     <div className="mt-2 text-xs text-blue-600">
-                      {item.quantity} × {getActivityHpPerUnit(item.activity)} HP = {getItemHp(item).toFixed(1)} HP
+                      {item.quantity || '—'} × {getActivityHpPerUnit(item.activity)} HP = {getItemHp(item).toFixed(1)} HP
                     </div>
                   </div>
                 )}
