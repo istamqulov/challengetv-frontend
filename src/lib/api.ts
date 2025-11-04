@@ -52,6 +52,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getMyChallengeParticipant(slug: string): Promise<Participant> {
+    const response = await this.client.get(`/challenges/${slug}/participants/me/`);
+    return response.data;
+  }
+
   // Authentication methods
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await this.client.post('/auth/login/', credentials);

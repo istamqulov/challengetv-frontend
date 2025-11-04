@@ -73,7 +73,7 @@ export const SendProgressTab: React.FC = () => {
     if (slug) {
       loadChallengeData();
     }
-  }, [slug]);
+  }, [slug, user?.id]);
 
   useEffect(() => {
     loadExistingProgress();
@@ -90,18 +90,32 @@ export const SendProgressTab: React.FC = () => {
     setError(null);
 
     try {
-      const [challengeData, participantsData] = await Promise.all([
-        apiClient.getChallenge(slug),
-        apiClient.getChallengeParticipants(slug).catch(() => [])
-      ]);
-
+      const challengeData = await apiClient.getChallenge(slug);
       setChallenge(challengeData);
-      
-      // Find current user's participant data
-      const currentUserParticipant = participantsData.find(p => p.user.id === user?.id);
+
+      let currentUserParticipant: Participant | null = null;
+
+      if (user) {
+        try {
+          currentUserParticipant = await apiClient.getMyChallengeParticipant(slug);
+        } catch (participantError: any) {
+          if (participantError?.response?.status !== 404) {
+            console.warn('Failed to load current participant via /me endpoint:', participantError);
+          }
+        }
+      }
+
+      if (!currentUserParticipant) {
+        const participantsData = await apiClient.getChallengeParticipants(slug).catch(() => []);
+        currentUserParticipant = participantsData.find(p => p.user.id === user?.id) || null;
+      }
+
       if (currentUserParticipant) {
         setParticipant(currentUserParticipant);
         setRequiredHp(currentUserParticipant.challenge_level.required_hp_per_day);
+      } else {
+        setParticipant(null);
+        setRequiredHp(0);
       }
     } catch (err) {
       setError(getErrorMessage(err));

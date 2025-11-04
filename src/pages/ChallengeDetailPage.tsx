@@ -41,7 +41,7 @@ export const ChallengeDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
 
   const [challenge, setChallenge] = useState<Challenge | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -58,7 +58,7 @@ export const ChallengeDetailPage: React.FC = () => {
     if (slug) {
       loadChallengeData();
     }
-  }, [slug]);
+  }, [slug, isAuthenticated, user?.id]);
 
   // Set initial tab from URL path
   useEffect(() => {
@@ -93,17 +93,46 @@ export const ChallengeDetailPage: React.FC = () => {
     setError(null);
 
     try {
-      const [challengeData, participantsData] = await Promise.all([
+      const [challengeData, participantsData, myParticipant] = await Promise.all([
         apiClient.getChallenge(slug),
         apiClient.getChallengeParticipants(slug).catch((err: any) => {
           console.error('Error loading participants:', err);
           return [];
         }),
+        isAuthenticated
+          ? apiClient.getMyChallengeParticipant(slug).catch((err: any) => {
+              if (err?.response?.status !== 404) {
+                console.error('Error loading current participant:', err);
+              }
+              return null;
+            })
+          : Promise.resolve<Participant | null>(null),
       ]);
-      // If we have an optimistic joined state (just joined), enforce it to avoid UI flicker
-      const mergedChallenge = joinedOptimistic ? { ...challengeData, joined: true } : challengeData;
+
+      const participantFromList = user
+        ? participantsData.find((participant) => participant.user.id === user.id)
+        : undefined;
+      const resolvedParticipant = myParticipant || participantFromList || null;
+
+      const mergedChallenge: Challenge = joinedOptimistic
+        ? { ...challengeData, joined: true }
+        : { ...challengeData, joined: Boolean(challengeData.joined) };
+
+      if (resolvedParticipant) {
+        mergedChallenge.joined = true;
+      }
+
       setChallenge(mergedChallenge);
-      setParticipants(participantsData);
+
+      let updatedParticipants = participantsData;
+      if (resolvedParticipant) {
+        const alreadyPresent = participantsData.some((participant) => participant.id === resolvedParticipant.id);
+        if (!alreadyPresent) {
+          updatedParticipants = [resolvedParticipant, ...participantsData];
+        }
+      }
+
+      setParticipants(updatedParticipants);
     } catch (err) {
       setError(getErrorMessage(err));
     } finally {
