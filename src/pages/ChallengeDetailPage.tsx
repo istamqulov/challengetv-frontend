@@ -13,6 +13,7 @@ import {
   UserPlus,
   UserMinus,
   Table,
+  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -35,7 +36,11 @@ import {
   isChallengeActive,
   isChallengeUpcoming,
   getErrorMessage,
+  parseISO,
 } from '@/lib/utils';
+import { differenceInCalendarDays } from 'date-fns';
+
+const TELEGRAM_INVITE_URL = 'https://t.me/+zZ9cuS3a7hQxZDcy';
 
 export const ChallengeDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -53,6 +58,12 @@ export const ChallengeDetailPage: React.FC = () => {
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
   const [joinedOptimistic, setJoinedOptimistic] = useState(false);
+
+  const handleOpenTelegramChannel = () => {
+    if (typeof window !== 'undefined') {
+      window.open(TELEGRAM_INVITE_URL, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   useEffect(() => {
     if (slug) {
@@ -270,6 +281,8 @@ const handleShare = async () => {
   const isActive = isChallengeActive(challenge.start_date, challenge.end_date);
   const isUpcoming = isChallengeUpcoming(challenge.start_date);
   const daysUntilStart = getDaysUntil(challenge.start_date);
+  const daysSinceStart = differenceInCalendarDays(new Date(), parseISO(challenge.start_date));
+  const canShowLeaveButton = challenge.joined && daysSinceStart <= 3;
 
   const getStatusBadge = () => {
     if (challenge.status === 'active' && isActive) {
@@ -360,16 +373,18 @@ const handleShare = async () => {
                 
                 {isAuthenticated ? (
                   challenge.joined ? (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleLeaveChallenge}
-                      disabled={isJoining}
-                      className="flex items-center space-x-1"
-                    >
-                      <UserMinus className="w-4 h-4" />
-                      <span>{isJoining ? 'Покидаем...' : 'Покинуть'}</span>
-                    </Button>
+                    canShowLeaveButton ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLeaveChallenge}
+                        disabled={isJoining}
+                        className="flex items-center space-x-1"
+                      >
+                        <UserMinus className="w-4 h-4" />
+                        <span>{isJoining ? 'Покидаем...' : 'Покинуть'}</span>
+                      </Button>
+                    ) : null
                   ) : (
                     <Button
                       variant="primary"
@@ -394,6 +409,18 @@ const handleShare = async () => {
                   </Button>
                 )}
                 
+                {isAuthenticated && challenge.joined && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleOpenTelegramChannel}
+                    className="flex items-center space-x-1"
+                  >
+                    <Send className="w-4 h-4" />
+                    <span>Telegram канал</span>
+                  </Button>
+                )}
+
                 <Button
                   variant="ghost"
                   size="sm"
