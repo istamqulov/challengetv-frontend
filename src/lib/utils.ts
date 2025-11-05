@@ -94,7 +94,7 @@ export function truncateText(text: string, maxLength: number): string {
 
 export function getAvatarUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http') || url.startsWith('data:') || url.startsWith('blob:')) return url;
   const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
   return `${apiBaseUrl}${url}`;
 }

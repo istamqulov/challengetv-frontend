@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, Mail, Calendar, Edit3, Save, X, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { Avatar } from '@/components/ui/Avatar';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
 import type { User as UserType } from '@/types/api';
+import { getAvatarUrl, getErrorMessage } from '@/lib/utils';
 
 export const ProfilePage: React.FC = () => {
   const { user, isAuthenticated } = useAuthStore();
@@ -16,6 +18,11 @@ export const ProfilePage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const tempObjectUrlRef = useRef<string | null>(null);
 
   // Form data for editing
   const [editData, setEditData] = useState({
@@ -40,6 +47,8 @@ export const ProfilePage: React.FC = () => {
         last_name: userData.last_name || '',
         email: userData.email || '',
       });
+      setAvatarPreview(getAvatarUrl(userData.profile?.avatar) || null);
+      setAvatarError(null);
     } catch (error) {
       console.error('Error loading profile:', error);
       setError('Ошибка загрузки профиля');
@@ -47,6 +56,22 @@ export const ProfilePage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (tempObjectUrlRef.current) {
+        URL.revokeObjectURL(tempObjectUrlRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (profileData?.profile?.avatar) {
+      setAvatarPreview(getAvatarUrl(profileData.profile.avatar) || null);
+    } else {
+      setAvatarPreview(null);
+    }
+  }, [profileData?.profile?.avatar]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -140,6 +165,66 @@ export const ProfilePage: React.FC = () => {
     setIsEditing(false);
   };
 
+  const handleAvatarButtonClick = () => {
+    if (isUploadingAvatar) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setAvatarError('Пожалуйста, выберите файл изображения.');
+      event.target.value = '';
+      return;
+    }
+
+    const MAX_SIZE_MB = 5;
+    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
+
+    if (file.size > MAX_SIZE_BYTES) {
+      setAvatarError(`Размер файла не должен превышать ${MAX_SIZE_MB} МБ.`);
+      event.target.value = '';
+      return;
+    }
+
+    setAvatarError(null);
+
+    if (tempObjectUrlRef.current) {
+      URL.revokeObjectURL(tempObjectUrlRef.current);
+      tempObjectUrlRef.current = null;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    tempObjectUrlRef.current = previewUrl;
+    setAvatarPreview(previewUrl);
+    setIsUploadingAvatar(true);
+
+    try {
+      const updatedUser = await apiClient.uploadAvatar(file);
+      setProfileData(updatedUser);
+      useAuthStore.getState().updateUser(updatedUser);
+      const remoteUrl = getAvatarUrl(updatedUser.profile?.avatar) || null;
+      setAvatarPreview(remoteUrl);
+      if (tempObjectUrlRef.current) {
+        URL.revokeObjectURL(tempObjectUrlRef.current);
+        tempObjectUrlRef.current = null;
+      }
+    } catch (uploadError) {
+      setAvatarError(getErrorMessage(uploadError) || 'Не удалось загрузить аватар.');
+      const fallbackUrl = getAvatarUrl(profileData?.profile?.avatar) || null;
+      setAvatarPreview(fallbackUrl);
+      if (tempObjectUrlRef.current) {
+        URL.revokeObjectURL(tempObjectUrlRef.current);
+        tempObjectUrlRef.current = null;
+      }
+    } finally {
+      setIsUploadingAvatar(false);
+      event.target.value = '';
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
       year: 'numeric',
@@ -212,13 +297,47 @@ export const ProfilePage: React.FC = () => {
             <Card padding={true}>
               <div className="text-center">
                 {/* Avatar */}
-                <div className="relative inline-block mb-6">
-                  <div className="w-24 h-24 bg-primary-100 rounded-full flex items-center justify-center mx-auto">
-                    <User className="w-12 h-12 text-primary-600" />
+                <div className="relative inline-flex flex-col items-center mb-6">
+                  <div className="relative">
+                    <Avatar
+                      src={avatarPreview || profileData.profile?.avatar || undefined}
+                      firstName={profileData.first_name}
+                      lastName={profileData.last_name}
+                      username={profileData.username}
+                      size="xl"
+                      className="ring-4 ring-white shadow-lg bg-gray-100"
+                    />
+                    {isUploadingAvatar && (
+                      <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center">
+                        <div className="h-7 w-7 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleAvatarButtonClick}
+                      disabled={isUploadingAvatar}
+                      className="absolute bottom-0 right-0 w-9 h-9 bg-primary-600 rounded-full flex items-center justify-center text-white hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 focus:ring-offset-white disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+                      aria-label="Изменить фото профиля"
+                    >
+                      <Camera className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white hover:bg-primary-700 transition-colors">
-                    <Camera className="w-4 h-4" />
-                  </button>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={fileInputRef}
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                  {avatarError ? (
+                    <p className="text-xs text-red-500 mt-2 max-w-[12rem]">
+                      {avatarError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500 mt-2 max-w-[12rem]">
+                      PNG или JPG до 5 МБ
+                    </p>
+                  )}
                 </div>
 
                 {/* User Info */}

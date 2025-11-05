@@ -92,6 +92,25 @@ class ApiClient {
     return response.data;
   }
 
+  async uploadAvatar(file: File, extraData?: Record<string, string | Blob>): Promise<User> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    if (extraData) {
+      Object.entries(extraData).forEach(([key, value]) => {
+        formData.append(key, value);
+      });
+    }
+
+    const response = await this.client.patch('/users/update_profile/', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+
+    return response.data;
+  }
+
   // Get top users by total HP earned
   async getTopUsers(page?: number): Promise<PaginatedResponse<User>> {
     const response = await this.client.get('/users/', {

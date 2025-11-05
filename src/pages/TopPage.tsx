@@ -48,7 +48,7 @@ export const TopPage: React.FC = () => {
       case 2:
         return <Medal className="w-8 h-8 text-gray-400" fill="currentColor" />;
       case 3:
-        return <Medal className="w-8 h-8 text-amber-700" fill="currentColor" />;
+        return <Medal className="w-8 h-8 text-[#b45f2a]" fill="currentColor" />;
       default:
         return null;
     }
@@ -61,7 +61,7 @@ export const TopPage: React.FC = () => {
       case 2:
         return 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-300';
       case 3:
-        return 'bg-gradient-to-r from-amber-50 to-amber-100 border-amber-300';
+        return 'bg-gradient-to-r from-[#fdf2e9] to-[#f4d9bf] border-[#c9793b]';
       default:
         return 'bg-white border-gray-200';
     }
@@ -126,10 +126,10 @@ export const TopPage: React.FC = () => {
       {/* Top 3 Podium */}
       {users.length >= 3 && (
         <div className="mb-8">
-          <div className="flex items-end justify-center space-x-4 mb-6">
+          <div className="flex flex-col items-stretch gap-4 sm:flex-row sm:items-end sm:justify-center sm:gap-6 mb-6">
             {/* 2nd Place */}
-            <div className="flex-1 max-w-[200px]">
-              <Card className={`p-6 text-center ${getMedalColor(2)} border-2`}>
+            <div className="w-full order-2 sm:order-1 sm:flex-1 sm:max-w-[200px]">
+              <Card className={`h-full p-6 text-center ${getMedalColor(2)} border-2`}>
                 <div className="flex justify-center mb-3">
                   {getMedalIcon(2)}
                 </div>
@@ -148,7 +148,7 @@ export const TopPage: React.FC = () => {
                     : ''}
                 </p>
                 <div className="bg-white rounded-lg p-2">
-                  <div className="text-2xl font-bold text-gray-700">
+                  <div className="text-2xl font-bold text-[#b45f2a]">
                     {formatNumber(users[1].profile?.total_hp_earned || 0)}
                   </div>
                   <div className="text-xs text-gray-500">HP</div>
@@ -157,8 +157,8 @@ export const TopPage: React.FC = () => {
             </div>
 
             {/* 1st Place */}
-            <div className="flex-1 max-w-[240px]">
-              <Card className={`p-6 text-center ${getMedalColor(1)} border-2 border-yellow-400 shadow-lg`}>
+            <div className="w-full order-1 sm:order-2 sm:flex-1 sm:max-w-[240px] sm:-mt-6">
+              <Card className={`h-full p-6 text-center ${getMedalColor(1)} border-2 border-yellow-400 shadow-lg sm:shadow-xl`}>
                 <div className="flex justify-center mb-3">
                   {getMedalIcon(1)}
                 </div>
@@ -189,8 +189,8 @@ export const TopPage: React.FC = () => {
             </div>
 
             {/* 3rd Place */}
-            <div className="flex-1 max-w-[200px]">
-              <Card className={`p-6 text-center ${getMedalColor(3)} border-2`}>
+            <div className="w-full order-3 sm:order-3 sm:flex-1 sm:max-w-[200px]">
+              <Card className={`h-full p-6 text-center ${getMedalColor(3)} border-2`}>
                 <div className="flex justify-center mb-3">
                   {getMedalIcon(3)}
                 </div>
