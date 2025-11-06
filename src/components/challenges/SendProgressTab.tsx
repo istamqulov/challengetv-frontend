@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
 import { Loading } from '@/components/ui/Loading';
 import { apiClient } from '@/lib/api';
 import { useAuthStore } from '@/stores/authStore';
@@ -24,7 +23,7 @@ import type {
 } from '@/types/api';
 
 type ProgressItemForm = Omit<DailyProgressUploadItem, 'quantity'> & { quantity: string };
-import { getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil, formatLocalDate } from '@/lib/utils';
+import { cn, getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil, formatLocalDate } from '@/lib/utils';
 
 export const SendProgressTab: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -340,6 +339,14 @@ export const SendProgressTab: React.FC = () => {
     return activity ? parseFloat(activity.activity.hp_per_unit) : 0;
   };
 
+  const getActivityUnitName = (activityId: number): string | null => {
+    if (!challenge) return null;
+    const activity = challenge.allowed_activities?.find(
+      allowedActivity => allowedActivity.activity.id === activityId
+    );
+    return activity ? activity.activity.unit_name : null;
+  };
+
   const getItemHp = (item: ProgressItemForm): number => {
     const quantityValue = getQuantityValue(item);
     if (!item.activity || !quantityValue) return 0;
@@ -575,7 +582,10 @@ export const SendProgressTab: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {progressItems.map((item, index) => (
+            {progressItems.map((item, index) => {
+              const unitName = getActivityUnitName(item.activity);
+
+              return (
               <div key={index} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
@@ -602,7 +612,7 @@ export const SendProgressTab: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Выберите активность
                   </label>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                     {challenge?.allowed_activities?.map((allowedActivity) => (
                       <div
                         key={allowedActivity.id}
@@ -664,18 +674,36 @@ export const SendProgressTab: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Количество
+                      {unitName && (
+                        <span className="ml-1 text-xs text-gray-500">
+                          ({unitName})
+                        </span>
+                      )}
                     </label>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="1"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={item.quantity}
-                      onChange={(e) => updateProgressItem(index, 'quantity', e.target.value)}
-                      placeholder="Введите количество"
-                      required
-                    />
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={item.quantity}
+                        onChange={(e) => updateProgressItem(index, 'quantity', e.target.value)}
+                        placeholder="Введите количество"
+                        required
+                        className={cn(
+                          'w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed border-gray-300',
+                          unitName ? 'pr-20' : undefined
+                        )}
+                      />
+                      {unitName && (
+                        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                          <span className="px-2 py-1 bg-gray-100 border border-gray-200 rounded-md text-xs font-medium text-gray-600">
+                            {unitName}
+                          </span>
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* File Upload */}
@@ -812,7 +840,8 @@ export const SendProgressTab: React.FC = () => {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
