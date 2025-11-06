@@ -117,6 +117,8 @@ export const ParticipantProgressPage: React.FC = () => {
         participantId={participant.id}
         challenge={challenge}
         initialSelectedDate={initialSelectedDate}
+        userId={participant.user.id}
+        username={participant.user.username}
       />
     </div>
   );

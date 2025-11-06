@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Activity, AlertCircle, Flame, Trophy } from 'lucide-react';
+import { Activity, AlertCircle, Flame, Trophy, Award } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine } from 'recharts';
 import { Card } from '@/components/ui/Card';
 import { Loading } from '@/components/ui/Loading';
+import { Button } from '@/components/ui/Button';
 import { CalendarTimeline } from './CalendarTimeline';
 import { SingleDayProgress } from './SingleDayProgress';
+import { UserAchievementsModal } from './UserAchievementsModal';
 import { apiClient } from '@/lib/api';
 import { formatLocalDate, getTodayLocalDate, parseAndFormatLocalDate, getErrorMessage } from '@/lib/utils';
 import type { DailyProgress, Challenge, ParticipantStats } from '@/types/api';
@@ -14,13 +16,17 @@ interface ProgressSectionProps {
   participantId?: number; // If provided, shows progress for specific participant
   challenge?: Challenge; // Challenge data for timeline
   initialSelectedDate?: string;
+  userId?: number; // User ID for achievements modal
+  username?: string; // Username for achievements modal
 }
 
 export const ProgressSection: React.FC<ProgressSectionProps> = ({ 
   challengeSlug, 
   participantId,
   challenge,
-  initialSelectedDate
+  initialSelectedDate,
+  userId,
+  username
 }) => {
   const [dailyProgress, setDailyProgress] = useState<DailyProgress[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,6 +37,7 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
   const [isStatsLoading, setIsStatsLoading] = useState<boolean>(true);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [achievementsModalOpen, setAchievementsModalOpen] = useState(false);
 
   useEffect(() => {
     loadDailyProgress();
@@ -394,16 +401,31 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
         </Card>
       </div>
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
-          <Activity className="w-6 h-6 mr-2 text-primary-600" />
-          {participantId ? 'Прогресс участника' : 'Мой прогресс'}
-        </h2>
-        <p className="text-gray-600">
-          {participantId 
-            ? 'История активности участника в челлендже'
-            : 'Ваша история активности в челлендже'
-          }
-        </p>
+        <div className="flex items-center justify-between mb-2">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2 flex items-center">
+              <Activity className="w-6 h-6 mr-2 text-primary-600" />
+              {participantId ? 'Прогресс участника' : 'Мой прогресс'}
+            </h2>
+            <p className="text-gray-600">
+              {participantId 
+                ? 'История активности участника в челлендже'
+                : 'Ваша история активности в челлендже'
+              }
+            </p>
+          </div>
+          {userId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAchievementsModalOpen(true)}
+              className="flex items-center space-x-2"
+            >
+              <Award className="w-4 h-4" />
+              <span>Достижения</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Calendar Timeline */}
@@ -429,6 +451,17 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
         deletingItemId={deletingItemId}
         actionMessage={isOwnProgress ? actionMessage : null}
       />
+
+      {/* User Achievements Modal */}
+      {userId && challenge && (
+        <UserAchievementsModal
+          isOpen={achievementsModalOpen}
+          onClose={() => setAchievementsModalOpen(false)}
+          challengeSlug={challengeSlug}
+          userId={userId}
+          username={username}
+        />
+      )}
     </div>
   );
 };

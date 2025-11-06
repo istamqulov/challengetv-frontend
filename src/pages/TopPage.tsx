@@ -17,10 +17,23 @@ export const TopPage: React.FC = () => {
     previous: string | null;
   } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [authInitialized, setAuthInitialized] = useState(false);
+
+  // Wait for auth initialization before making requests
+  useEffect(() => {
+    // Give auth store time to initialize from localStorage
+    // This ensures token is set in apiClient before we make requests
+    const timer = setTimeout(() => {
+      setAuthInitialized(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
-    loadTopUsers(currentPage);
-  }, [currentPage]);
+    if (authInitialized) {
+      loadTopUsers(currentPage);
+    }
+  }, [currentPage, authInitialized]);
 
   const loadTopUsers = async (page: number = 1) => {
     setIsLoading(true);
@@ -35,7 +48,15 @@ export const TopPage: React.FC = () => {
         previous: response.previous,
       });
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Ошибка загрузки топа пользователей');
+      // Don't show error for 401 - this endpoint might require auth but we want to handle it gracefully
+      if (err.response?.status === 401) {
+        // For 401, just show empty state or a message that login is required
+        setUsers([]);
+        setError(null); // Don't show error message for 401
+        console.warn('Top users endpoint requires authentication');
+      } else {
+        setError(err.response?.data?.detail || 'Ошибка загрузки топа пользователей');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -82,6 +103,31 @@ export const TopPage: React.FC = () => {
     return (
       <div className="py-12">
         <Loading text="Загрузка топа пользователей..." />
+      </div>
+    );
+  }
+
+  // Show message if no users and no error (likely 401 was handled silently)
+  if (!isLoading && users.length === 0 && !error && authInitialized) {
+    return (
+      <div className="py-12">
+        <Card>
+          <div className="text-center py-8">
+            <Trophy className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Топ участников недоступен
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Для просмотра топа участников необходимо войти в систему
+            </p>
+            <a
+              href="/login"
+              className="inline-block px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            >
+              Войти
+            </a>
+          </div>
+        </Card>
       </div>
     );
   }

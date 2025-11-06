@@ -1,6 +1,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import { ProgressSection } from './ProgressSection';
+import { useAuthStore } from '@/stores/authStore';
 import type { Challenge } from '@/types/api';
 
 interface MyProgressTabProps {
@@ -9,6 +10,7 @@ interface MyProgressTabProps {
 
 export const MyProgressTab: React.FC<MyProgressTabProps> = ({ challenge }) => {
   const { slug } = useParams<{ slug: string }>();
+  const { user } = useAuthStore();
 
   if (!slug) {
     return (
@@ -18,5 +20,12 @@ export const MyProgressTab: React.FC<MyProgressTabProps> = ({ challenge }) => {
     );
   }
 
-  return <ProgressSection challengeSlug={slug} challenge={challenge} />;
+  return (
+    <ProgressSection
+      challengeSlug={slug}
+      challenge={challenge}
+      userId={user?.id}
+      username={user?.username}
+    />
+  );
 };

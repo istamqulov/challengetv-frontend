@@ -107,6 +107,14 @@ function App() {
             }
           />
           <Route
+            path="/challenges/:slug/achievements"
+            element={
+              <Layout>
+                <ChallengeDetailPage />
+              </Layout>
+            }
+          />
+          <Route
             path="/challenges/:slug"
             element={
               <Layout>

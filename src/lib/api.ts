@@ -15,6 +15,7 @@ import type {
   DailyProgressUploadRequest,
   DailyProgressUploadResponse,
   ParticipantStats,
+  ChallengeAchievement,
 } from '@/types/api';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -145,6 +146,16 @@ class ApiClient {
       ? `/challenges/${slug}/participants/${participantId}/stats/`
       : `/challenges/${slug}/participants/me/stats/`;
     const response = await this.client.get(endpoint);
+    return response.data;
+  }
+
+  async getChallengeAchievements(slug: string): Promise<ChallengeAchievement[]> {
+    const response = await this.client.get(`/challenges/${slug}/achievements/`);
+    return response.data;
+  }
+
+  async getUserChallengeAchievements(slug: string, userId: number): Promise<ChallengeAchievement[]> {
+    const response = await this.client.get(`/challenges/${slug}/achievements/${userId}/`);
     return response.data;
   }
 
