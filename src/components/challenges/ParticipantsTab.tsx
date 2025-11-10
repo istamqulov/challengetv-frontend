@@ -52,9 +52,6 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                   Участник
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Статус
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Уровень
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -91,20 +88,6 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                         </div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <Badge 
-                      variant={
-                        participant.status === 'active' ? 'success' :
-                        participant.status === 'completed' ? 'default' :
-                        participant.status === 'failed' ? 'danger' : 'warning'
-                      }
-                    >
-                      {participant.status === 'active' && 'Активный'}
-                      {participant.status === 'completed' && 'Завершен'}
-                      {participant.status === 'failed' && 'Не прошел'}
-                      {participant.status === 'withdrew' && 'Покинул'}
-                    </Badge>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {(() => {

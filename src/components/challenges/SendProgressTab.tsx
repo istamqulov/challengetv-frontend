@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Activity, 
@@ -22,8 +22,116 @@ import type {
   Participant 
 } from '@/types/api';
 
-type ProgressItemForm = Omit<DailyProgressUploadItem, 'quantity'> & { quantity: string };
+type ProgressItemForm = Omit<DailyProgressUploadItem, 'quantity'> & { 
+  quantity: string;
+  // Walking-specific fields
+  walkingUnit?: 'steps' | 'meters';
+  stepLength?: string;
+  subtractRunning?: boolean;
+};
+
 import { cn, getErrorMessage, isChallengeActive, isChallengeUpcoming, getDaysUntil, formatLocalDate } from '@/lib/utils';
+
+// Component for Running Subtraction Checkbox
+const RunningSubtractionCheckbox: React.FC<{
+  item: ProgressItemForm;
+  index: number;
+  challenge: Challenge | null;
+  slug: string | undefined;
+  participant: Participant | null;
+  selectedDate: string;
+  progressItems: ProgressItemForm[];
+  getActivitySlug: (activityId: number) => string | null;
+  getQuantityValue: (item: ProgressItemForm) => number;
+  updateProgressItem: (index: number, field: keyof ProgressItemForm, value: any) => void;
+}> = ({ item, index, challenge, slug, participant, selectedDate, progressItems, getActivitySlug, getQuantityValue, updateProgressItem }) => {
+  const [runningDistance, setRunningDistance] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadRunning = async () => {
+      if (!slug || !participant || !selectedDate) {
+        setRunningDistance(0);
+        setLoading(false);
+        return;
+      }
+      
+      let totalRunningMeters = 0;
+      
+      // Check existing progress for running activities
+      try {
+        const response = await apiClient.getDailyProgress(slug, participant.id);
+        const progressForDate = response.results.find(p => p.date === selectedDate);
+        
+        if (progressForDate) {
+          progressForDate.items.forEach(existingItem => {
+            const activityData = challenge?.allowed_activities?.find(
+              a => a.activity.id === existingItem.activity
+            );
+            if (activityData?.activity.slug === 'running') {
+              totalRunningMeters += existingItem.quantity;
+            }
+          });
+        }
+      } catch (err) {
+        console.error('Error loading running distance:', err);
+      }
+      
+      // Check current form for running activities
+      progressItems.forEach(formItem => {
+        const activitySlug = getActivitySlug(formItem.activity);
+        if (activitySlug === 'running' && formItem !== item) {
+          totalRunningMeters += getQuantityValue(formItem);
+        }
+      });
+      
+      setRunningDistance(totalRunningMeters);
+      setLoading(false);
+    };
+
+    loadRunning();
+  }, [slug, participant, selectedDate, progressItems, challenge]);
+
+  if (loading || runningDistance === 0) {
+    return null;
+  }
+
+  const steps = getQuantityValue(item);
+  const finalSteps = item.subtractRunning !== false && steps > runningDistance ? steps - runningDistance : steps;
+
+  return (
+    <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+      <label className="flex items-start space-x-2 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={item.subtractRunning !== false}
+          onChange={(e) => {
+            updateProgressItem(index, 'subtractRunning', e.target.checked);
+          }}
+          className="mt-1 w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+        />
+        <div className="flex-1">
+          <span className="text-sm font-medium text-orange-900">
+            Вычесть шаги бега
+          </span>
+          <p className="text-xs text-orange-700 mt-1">
+            Обнаружено {runningDistance.toLocaleString()} м бега. 
+            {item.subtractRunning !== false && steps > runningDistance && (
+              <span className="block mt-1 font-medium">
+                Итого: {finalSteps.toLocaleString()} шагов
+              </span>
+            )}
+            {item.subtractRunning !== false && steps <= runningDistance && (
+              <span className="block mt-1 text-red-600 font-medium">
+                ⚠️ Шагов меньше дистанции бега. Вычитание не будет применено.
+              </span>
+            )}
+          </p>
+        </div>
+      </label>
+    </div>
+  );
+};
 
 export const SendProgressTab: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -59,6 +167,9 @@ export const SendProgressTab: React.FC = () => {
       quantity: '',
       type: 'photo',
       description: '',
+      walkingUnit: 'steps',
+      stepLength: '0.7',
+      subtractRunning: false,
     }
   ]);
 
@@ -144,7 +255,74 @@ export const SendProgressTab: React.FC = () => {
     }
   };
 
-  const getQuantityValue = (item: ProgressItemForm): number => {
+  // Get activity slug by ID
+  const getActivitySlug = (activityId: number): string | null => {
+    if (!challenge) return null;
+    const activity = challenge.allowed_activities?.find(
+      allowedActivity => allowedActivity.activity.id === activityId
+    );
+    return activity?.activity.slug || null;
+  };
+
+
+  // Get localStorage key for subtracted running activities
+  const getSubtractedRunningKey = () => {
+    return `subtracted-running-${slug}-${selectedDate}-${participant?.id}`;
+  };
+
+  // Load subtracted running from localStorage
+  const getSubtractedRunning = (): number[] => {
+    try {
+      const stored = localStorage.getItem(getSubtractedRunningKey());
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  };
+
+  // Save subtracted running to localStorage
+  const saveSubtractedRunning = (runningIds: number[]) => {
+    try {
+      localStorage.setItem(getSubtractedRunningKey(), JSON.stringify(runningIds));
+    } catch (err) {
+      console.error('Error saving subtracted running:', err);
+    }
+  };
+
+  // Convert meters to steps
+  const metersToSteps = (meters: number, stepLength: number): number => {
+    if (stepLength <= 0) return 0;
+    return Math.round(meters / stepLength);
+  };
+
+  // Convert steps to meters
+  const stepsToMeters = (steps: number, stepLength: number): number => {
+    return Math.round(steps * stepLength);
+  };
+
+  const getQuantityValue = (item: ProgressItemForm, applyRunningSubtraction: boolean = false): number => {
+    const activitySlug = getActivitySlug(item.activity);
+    
+    // For walking, handle unit conversion
+    if (activitySlug === 'walking') {
+      const stepLength = parseFloat(item.stepLength || '0.7');
+      
+      let steps = 0;
+      if (item.walkingUnit === 'meters') {
+        // Convert meters to steps
+        const meters = parseFloat(item.quantity || '0');
+        steps = metersToSteps(meters, stepLength);
+      } else {
+        // Already in steps
+        steps = Math.trunc(parseFloat(item.quantity || '0'));
+      }
+      
+      // Don't apply running subtraction during form validation/display
+      // It will be applied during submission only
+      return steps;
+    }
+    
+    // For other activities, parse normally
     if (typeof item.quantity === 'number') {
       return Math.trunc(item.quantity);
     }
@@ -195,6 +373,9 @@ export const SendProgressTab: React.FC = () => {
       quantity: '',
       type: 'photo',
       description: '',
+      walkingUnit: 'steps',
+      stepLength: '0.7',
+      subtractRunning: false,
     }]);
   };
 
@@ -258,19 +439,62 @@ export const SendProgressTab: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!participant) {
+    if (!participant || !slug) {
       setError('Участник не найден');
       return;
     }
 
-    // Validate form - file is required
-    const normalizedItems: DailyProgressUploadItem[] = progressItems.map(item => ({
-      activity: item.activity,
-      quantity: getQuantityValue(item),
-      type: item.type,
-      file: item.file,
-      description: item.description,
-    }));
+    // Calculate total running distance from existing and current progress
+    let totalRunningMeters = 0;
+    
+    // Check existing progress
+    try {
+      const response = await apiClient.getDailyProgress(slug, participant.id);
+      const progressForDate = response.results.find(p => p.date === selectedDate);
+      
+      if (progressForDate) {
+        progressForDate.items.forEach(existingItem => {
+          const activityData = challenge?.allowed_activities?.find(
+            a => a.activity.id === existingItem.activity
+          );
+          if (activityData?.activity.slug === 'running') {
+            totalRunningMeters += existingItem.quantity;
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Error loading running distance:', err);
+    }
+    
+    // Add running from current form
+    progressItems.forEach(formItem => {
+      const activitySlug = getActivitySlug(formItem.activity);
+      if (activitySlug === 'running') {
+        totalRunningMeters += getQuantityValue(formItem);
+      }
+    });
+
+    // Validate form - file is required and apply running subtraction
+    const normalizedItems: DailyProgressUploadItem[] = progressItems.map(item => {
+      let quantity = getQuantityValue(item);
+      
+      // Apply running subtraction for walking if enabled
+      const activitySlug = getActivitySlug(item.activity);
+      if (activitySlug === 'walking' && item.subtractRunning !== false && totalRunningMeters > 0) {
+        // Only subtract if steps > running distance
+        if (quantity > totalRunningMeters) {
+          quantity = quantity - totalRunningMeters;
+        }
+      }
+      
+      return {
+        activity: item.activity,
+        quantity: quantity,
+        type: item.type,
+        file: item.file,
+        description: item.description,
+      };
+    });
 
     const validItems = normalizedItems.filter(item => 
       item.activity && item.quantity > 0 && item.file && (item.type === 'photo' || item.type === 'video')
@@ -308,12 +532,20 @@ export const SendProgressTab: React.FC = () => {
         }
       );
 
+      // Save that we've subtracted this running distance
+      if (totalRunningMeters > 0) {
+        saveSubtractedRunning([Date.now()]); // Simple timestamp to mark subtraction
+      }
+
       setSuccess(`${response.message} Создано элементов: ${response.items_created}, HP: ${response.total_hp}/${response.required_hp}`);
       setProgressItems([{
         activity: 0,
         quantity: '',
         type: 'photo',
         description: '',
+        walkingUnit: 'steps',
+        stepLength: '0.7',
+        subtractRunning: false,
       }]);
       setUploadProgress(0);
       
@@ -670,40 +902,158 @@ export const SendProgressTab: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 
-                  {/* Quantity */}
+                  {/* Quantity - with walking-specific logic */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Количество
-                      {unitName && (
-                        <span className="ml-1 text-xs text-gray-500">
-                          ({unitName})
-                        </span>
-                      )}
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={item.quantity}
-                        onChange={(e) => updateProgressItem(index, 'quantity', e.target.value)}
-                        placeholder="Введите количество"
-                        required
-                        className={cn(
-                          'w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed border-gray-300',
-                          unitName ? 'pr-20' : undefined
+                    {getActivitySlug(item.activity) === 'walking' ? (
+                      <div className="space-y-3">
+                        {/* Unit Selection for Walking */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Единица измерения
+                          </label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => updateProgressItem(index, 'walkingUnit', 'steps')}
+                              className={`px-4 py-2 border rounded-lg text-sm font-medium transition-all ${
+                                item.walkingUnit === 'steps'
+                                  ? 'bg-primary-500 text-white border-primary-500'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:border-primary-300'
+                              }`}
+                            >
+                              Шаги
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateProgressItem(index, 'walkingUnit', 'meters')}
+                              className={`px-4 py-2 border rounded-lg text-sm font-medium transition-all ${
+                                item.walkingUnit === 'meters'
+                                  ? 'bg-primary-500 text-white border-primary-500'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:border-primary-300'
+                              }`}
+                            >
+                              Метры
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Step Length (only for meters) */}
+                        {item.walkingUnit === 'meters' && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Длина шага (м)
+                            </label>
+                            <input
+                              type="number"
+                              min="0.1"
+                              max="2"
+                              step="0.1"
+                              value={item.stepLength || '0.7'}
+                              onChange={(e) => updateProgressItem(index, 'stepLength', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">По умолчанию: 0.7 м</p>
+                          </div>
                         )}
-                      />
-                      {unitName && (
-                        <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                          <span className="px-2 py-1 bg-gray-100 border border-gray-200 rounded-md text-xs font-medium text-gray-600">
-                            {unitName}
-                          </span>
-                        </span>
-                      )}
-                    </div>
+
+                        {/* Quantity Input */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Количество
+                            <span className="ml-1 text-xs text-gray-500">
+                              ({item.walkingUnit === 'steps' ? 'шагов' : 'метров'})
+                            </span>
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={item.quantity}
+                              onChange={(e) => updateProgressItem(index, 'quantity', e.target.value)}
+                              placeholder={`Введите количество ${item.walkingUnit === 'steps' ? 'шагов' : 'метров'}`}
+                              required
+                              className="w-full px-3 py-2 pr-20 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            />
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                              <span className="px-2 py-1 bg-gray-100 border border-gray-200 rounded-md text-xs font-medium text-gray-600">
+                                {item.walkingUnit === 'steps' ? 'шагов' : 'м'}
+                              </span>
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Show conversion for meters -> steps */}
+                        {item.walkingUnit === 'meters' && item.quantity && parseFloat(item.quantity) > 0 && (
+                          <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-sm text-blue-700">
+                              <strong>В шагах:</strong> {metersToSteps(
+                                parseFloat(item.quantity), 
+                                parseFloat(item.stepLength || '0.7')
+                              ).toLocaleString()} шагов
+                            </p>
+                            <p className="text-xs text-blue-600 mt-1">
+                              {item.quantity} м ÷ {item.stepLength || '0.7'} м = {metersToSteps(
+                                parseFloat(item.quantity), 
+                                parseFloat(item.stepLength || '0.7')
+                              ).toLocaleString()} шагов
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Subtract Running Checkbox */}
+                        <RunningSubtractionCheckbox
+                          item={item}
+                          index={index}
+                          challenge={challenge}
+                          slug={slug}
+                          participant={participant}
+                          selectedDate={selectedDate}
+                          progressItems={progressItems}
+                          getActivitySlug={getActivitySlug}
+                          getQuantityValue={getQuantityValue}
+                          updateProgressItem={updateProgressItem}
+                        />
+                      </div>
+                    ) : (
+                      /* Regular Quantity Input for Non-Walking Activities */
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Количество
+                          {unitName && (
+                            <span className="ml-1 text-xs text-gray-500">
+                              ({unitName})
+                            </span>
+                          )}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={item.quantity}
+                            onChange={(e) => updateProgressItem(index, 'quantity', e.target.value)}
+                            placeholder="Введите количество"
+                            required
+                            className={cn(
+                              'w-full px-3 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed border-gray-300',
+                              unitName ? 'pr-20' : undefined
+                            )}
+                          />
+                          {unitName && (
+                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                              <span className="px-2 py-1 bg-gray-100 border border-gray-200 rounded-md text-xs font-medium text-gray-600">
+                                {unitName}
+                              </span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* File Upload */}
