@@ -51,7 +51,7 @@ export const BottomNav: React.FC = () => {
   if (!isAuthenticated) {
     // Show minimal navigation for non-authenticated users
     return (
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-[100] will-change-transform" style={{ position: 'fixed', transform: 'translateZ(0)' }}>
         <div className="flex items-center justify-around h-16 px-4">
           <Link
             to="/"
@@ -89,7 +89,7 @@ export const BottomNav: React.FC = () => {
 
   // For authenticated users - show full navigation with FAB
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-[100] will-change-transform" style={{ position: 'fixed', transform: 'translateZ(0)' }}>
       <div className="relative flex items-center justify-around h-16 px-2">
         {/* Challenges */}
         <Link

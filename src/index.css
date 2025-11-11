@@ -3,13 +3,28 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    overflow-y: scroll;
+    overflow-x: hidden;
+  }
+  
   body {
     @apply bg-gray-50 text-gray-900;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
   }
 }
 
 @layer utilities {
+  .line-clamp-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
   .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -22,6 +37,13 @@
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+  
+  /* Prevent fixed elements from scrolling */
+  .fixed-no-scroll {
+    position: fixed !important;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
   }
 }
 

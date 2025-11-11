@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TopBar } from '@/components/layout/TopBar';
+import { MobileHeader } from '@/components/layout/MobileHeader';
 import { BottomNav } from '@/components/layout/BottomNav';
 import { HomePage } from '@/pages/HomePage';
 import { ChallengesPage } from '@/pages/ChallengesPage';
@@ -19,7 +20,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50">
       <TopBar />
-      <main className="pb-20 md:pb-0">{children}</main>
+      <MobileHeader />
+      <main className="pt-14 pb-20 md:pt-0 md:pb-0">{children}</main>
       <BottomNav />
     </div>
   );

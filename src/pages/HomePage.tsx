@@ -29,7 +29,7 @@ export const HomePage: React.FC = () => {
 
   useEffect(() => {
     loadChallenges();
-  }, []);
+  }, [isAuthenticated]); // Reload when authentication status changes
 
   const loadChallenges = async () => {
     try {
