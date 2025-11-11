@@ -34,6 +34,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+        // Исключаем Django пути из Service Worker
+        navigateFallbackDenylist: [/^\/admin/, /^\/api/, /^\/static/, /^\/media/],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

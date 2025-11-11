@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обновление приложения...</title>
+</head>
+<body>
+    <h1>Обновление приложения...</h1>
+    <p id="status">Очистка кэша...</p>
+    
+    <script>
+        async function clearServiceWorkers() {
+            const status = document.getElementById('status');
+            
+            if ('serviceWorker' in navigator) {
+                try {
+                    // Удаляем все Service Workers
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    
+                    for (const registration of registrations) {
+                        await registration.unregister();
+                        console.log('Service Worker unregistered:', registration);
+                    }
+                    
+                    // Очищаем весь кэш
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        await Promise.all(
+                            cacheNames.map(cacheName => caches.delete(cacheName))
+                        );
+                    }
+                    
+                    status.textContent = 'Кэш очищен! Перезагружаем...';
+                    
+                    // Перезагружаем страницу
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Error clearing service workers:', error);
+                    status.textContent = 'Ошибка очистки. Обновите страницу вручную (Ctrl+Shift+R)';
+                }
+            } else {
+                status.textContent = 'Service Worker не поддерживается';
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 1000);
+            }
+        }
+        
+        clearServiceWorkers();
+    </script>
+</body>
+</html>
+
