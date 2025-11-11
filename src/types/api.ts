@@ -341,3 +341,26 @@ export interface ChallengeAchievement {
   percentage: number;
   earned_at: string | null;
 }
+
+export interface AchievementWithUsers {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  icon: string | null;
+  condition: string;
+  activity: number;
+  activity_name: string;
+  activity_slug: string;
+  achievement_type: 'daily' | 'total_in_period' | 'streak' | 'total';
+  achievement_type_display: string;
+  required_quantity: number;
+  minimum_quantity: number | null;
+  period_days: number | null;
+  hp_reward: number;
+  is_active: boolean;
+  users: Array<{
+    user: User;
+    earned_at: string;
+  }>;
+}

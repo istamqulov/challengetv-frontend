@@ -1,49 +1,49 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { format, parseISO, differenceInDays, isBefore, isAfter } from 'date-fns';
+import { format, parseISO as dateFnsParseISO, differenceInDays, isBefore, isAfter } from 'date-fns';
 import { ru } from 'date-fns/locale';
 
 // Re-export parseISO for use in other components
-export { parseISO };
+export const parseISO = dateFnsParseISO;
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export function formatDate(date: string | Date, formatString: string = 'dd MMMM yyyy'): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
+  const dateObj = typeof date === 'string' ? dateFnsParseISO(date) : date;
   return format(dateObj, formatString, { locale: ru });
 }
 
 export function formatDateTime(date: string | Date): string {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
+  const dateObj = typeof date === 'string' ? dateFnsParseISO(date) : date;
   return format(dateObj, 'dd MMMM yyyy, HH:mm', { locale: ru });
 }
 
 export function getDaysUntil(date: string | Date): number {
-  const dateObj = typeof date === 'string' ? parseISO(date) : date;
+  const dateObj = typeof date === 'string' ? dateFnsParseISO(date) : date;
   return differenceInDays(dateObj, new Date());
 }
 
 export function getDaysBetween(startDate: string | Date, endDate: string | Date): number {
-  const start = typeof startDate === 'string' ? parseISO(startDate) : startDate;
-  const end = typeof endDate === 'string' ? parseISO(endDate) : endDate;
+  const start = typeof startDate === 'string' ? dateFnsParseISO(startDate) : startDate;
+  const end = typeof endDate === 'string' ? dateFnsParseISO(endDate) : endDate;
   return differenceInDays(end, start);
 }
 
 export function isChallengeActive(startDate: string, endDate: string): boolean {
   const now = new Date();
-  const start = parseISO(startDate);
-  const end = parseISO(endDate);
+  const start = dateFnsParseISO(startDate);
+  const end = dateFnsParseISO(endDate);
   return isAfter(now, start) && isBefore(now, end);
 }
 
 export function isChallengeUpcoming(startDate: string): boolean {
-  return isBefore(new Date(), parseISO(startDate));
+  return isBefore(new Date(), dateFnsParseISO(startDate));
 }
 
 export function isChallengeCompleted(endDate: string): boolean {
-  return isAfter(new Date(), parseISO(endDate));
+  return isAfter(new Date(), dateFnsParseISO(endDate));
 }
 
 export function getChallengeStatusText(status: string): string {

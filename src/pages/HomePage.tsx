@@ -397,18 +397,7 @@ export const HomePage: React.FC = () => {
                               <div className="flex items-center space-x-3">
                                 {isAuthenticated ? (
                                   challenge.joined ? (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => handleLeaveChallenge(challenge, e)}
-                                      disabled={joiningChallenges.has(challenge.id)}
-                                      className="flex items-center space-x-1"
-                                    >
-                                      <UserMinus className="w-4 h-4" />
-                                      <span>
-                                        {joiningChallenges.has(challenge.id) ? 'Покидаем...' : 'Покинуть'}
-                                      </span>
-                                    </Button>
+                                    <span></span>
                                   ) : (
                                     <Button
                                       variant="primary"

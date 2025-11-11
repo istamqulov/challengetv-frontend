@@ -5,6 +5,7 @@ import { HomePage } from '@/pages/HomePage';
 import { ChallengesPage } from '@/pages/ChallengesPage';
 import { ChallengeDetailPage } from '@/pages/ChallengeDetailPage';
 import { TopPage } from '@/pages/TopPage';
+import { AllAchievementsPage } from '@/pages/AllAchievementsPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { ProfilePage } from '@/pages/ProfilePage';
@@ -127,6 +128,14 @@ function App() {
             element={
               <Layout>
                 <TopPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/achievements"
+            element={
+              <Layout>
+                <AllAchievementsPage />
               </Layout>
             }
           />

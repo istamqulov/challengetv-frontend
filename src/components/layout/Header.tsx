@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trophy, Menu, X, LogOut, User } from 'lucide-react';
+import { Trophy, Menu, X, LogOut, User, Award } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -34,6 +34,13 @@ export const Header: React.FC = () => {
               className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
             >
               Челленджи
+            </Link>
+            <Link
+              to="/achievements"
+              className="text-gray-700 hover:text-primary-600 font-medium transition-colors flex items-center space-x-1"
+            >
+              <Award className="w-4 h-4" />
+              <span>Достижения</span>
             </Link>
             <Link
               to="/top"
@@ -96,6 +103,14 @@ export const Header: React.FC = () => {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Челленджи
+              </Link>
+              <Link
+                to="/achievements"
+                className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 font-medium py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                <Award className="w-4 h-4" />
+                <span>Достижения</span>
               </Link>
               <Link
                 to="/top"
