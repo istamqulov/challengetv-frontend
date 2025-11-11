@@ -102,7 +102,7 @@ export function getAvatarUrl(url?: string | null): string | undefined {
 export function getImageUrl(url?: string | null): string | undefined {
   if (!url) return undefined;
   if (url.startsWith('http')) return url;
-  const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+  const apiBaseUrl = (import.meta as any).env?.VITE_API_BASE_DOMAIN || 'http://localhost:8000';
   return `${apiBaseUrl}${url}`;
 }
 
