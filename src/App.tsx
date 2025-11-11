@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Header } from '@/components/layout/Header';
+import { TopBar } from '@/components/layout/TopBar';
+import { BottomNav } from '@/components/layout/BottomNav';
 import { HomePage } from '@/pages/HomePage';
 import { ChallengesPage } from '@/pages/ChallengesPage';
 import { ChallengeDetailPage } from '@/pages/ChallengeDetailPage';
@@ -17,8 +18,9 @@ import { useAuthStore } from '@/stores/authStore';
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      <main>{children}</main>
+      <TopBar />
+      <main className="pb-20 md:pb-0">{children}</main>
+      <BottomNav />
     </div>
   );
 };

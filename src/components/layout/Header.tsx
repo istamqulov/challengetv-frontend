@@ -19,6 +19,14 @@ export const Header: React.FC = () => {
     <header className="bg-white shadow-sm border-b border-gray-200">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
+          {/* Mobile menu button (left side) */}
+          <button
+            className="md:hidden text-gray-700 mr-3"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <Trophy className="w-8 h-8 text-primary-600" />
@@ -84,13 +92,8 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <button
-            className="md:hidden text-gray-700"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
+          {/* Spacer for mobile to balance the layout */}
+          <div className="md:hidden w-6"></div>
         </div>
 
         {/* Mobile Navigation */}
