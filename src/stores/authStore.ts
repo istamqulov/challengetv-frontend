@@ -7,6 +7,7 @@ interface AuthState {
   tokens: AuthTokens | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isInitialized: boolean; // Flag to track if auth has been initialized from storage
   error: string | null;
   isRefreshing: boolean; // Add flag to prevent infinite refresh loops
   lastVerifiedToken: string | null; // Track last verified token to prevent re-verification
@@ -68,6 +69,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   tokens: null,
   isAuthenticated: false,
   isLoading: false,
+  isInitialized: false,
   error: null,
   isRefreshing: false,
   lastVerifiedToken: null,
@@ -85,6 +87,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
           user: null,
           tokens: null,
           isAuthenticated: false,
+          isInitialized: true,
           lastVerifiedToken: null,
           expiresAt: null,
         });
@@ -95,6 +98,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         user: stored.user || null,
         tokens: stored.tokens || null,
         isAuthenticated: stored.isAuthenticated || false,
+        isInitialized: true,
         expiresAt: stored.expiresAt || null,
       });
       
@@ -122,6 +126,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             });
         }
       }
+    } else {
+      // No stored auth, mark as initialized
+      set({ isInitialized: true });
     }
   },
 

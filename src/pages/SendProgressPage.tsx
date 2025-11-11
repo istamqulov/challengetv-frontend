@@ -10,7 +10,8 @@ import {
   Zap,
   FileImage,
   Video,
-  CheckCircle
+  CheckCircle,
+  ArrowLeft
 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -443,10 +444,24 @@ export const SendProgressPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-4 md:py-8">
       <Card>
-        <h1 className="text-2xl md:text-3xl font-bold mb-6 flex items-center">
-          <Upload className="w-7 h-7 md:w-8 md:h-8 mr-3 text-primary-600" />
-          Отправить прогресс
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold flex items-center">
+            <Upload className="w-7 h-7 md:w-8 md:h-8 mr-3 text-primary-600" />
+            Отправить прогресс
+          </h1>
+          {selectedChallengeSlug && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/challenges/${selectedChallengeSlug}`)}
+              className="flex items-center space-x-1"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Вернуться в челлендж</span>
+              <span className="sm:hidden">Назад</span>
+            </Button>
+          )}
+        </div>
 
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -666,47 +681,105 @@ export const SendProgressPage: React.FC = () => {
                       </label>
                       
                       {!item.file ? (
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <input
-                              type="file"
-                              id={`photo-${index}`}
-                              accept="image/jpeg,image/png"
-                              onChange={(e) => {
-                                handleFileChange(index, e.target.files?.[0] || null, 'photo');
-                                e.target.value = '';
-                              }}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor={`photo-${index}`}
-                              className="flex flex-col items-center justify-center h-16 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-400"
-                            >
-                              <FileImage className="w-5 h-5 text-gray-400 mb-1" />
-                              <span className="text-xs text-gray-600">Фото</span>
-                            </label>
-                          </div>
+                        (() => {
+                          const selectedActivity = challenge?.allowed_activities?.find(
+                            a => a.activity.id === item.activity
+                          )?.activity;
+                          const allowPhoto = selectedActivity?.allow_photo ?? true;
+                          const allowVideo = selectedActivity?.allow_video ?? true;
+                          const recommendedType = selectedActivity?.recommended_proof_type;
+                          const recommendedDescription = selectedActivity?.recommended_proof_description;
                           
-                          <div>
-                            <input
-                              type="file"
-                              id={`video-${index}`}
-                              accept=".mp4,.mov,.mkv"
-                              onChange={(e) => {
-                                handleFileChange(index, e.target.files?.[0] || null, 'video');
-                                e.target.value = '';
-                              }}
-                              className="hidden"
-                            />
-                            <label
-                              htmlFor={`video-${index}`}
-                              className="flex flex-col items-center justify-center h-16 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-primary-400"
-                            >
-                              <Video className="w-5 h-5 text-gray-400 mb-1" />
-                              <span className="text-xs text-gray-600">Видео</span>
-                            </label>
-                          </div>
-                        </div>
+                          // Calculate grid columns based on what's allowed
+                          const gridCols = (allowPhoto && allowVideo) ? 'grid-cols-2' : 'grid-cols-1';
+                          
+                          return (
+                            <div className="space-y-2">
+                              <div className={cn('grid gap-2', gridCols)}>
+                                {allowPhoto && (
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`photo-${index}`}
+                                      accept="image/jpeg,image/png"
+                                      onChange={(e) => {
+                                        handleFileChange(index, e.target.files?.[0] || null, 'photo');
+                                        e.target.value = '';
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`photo-${index}`}
+                                      className={cn(
+                                        "relative flex flex-col items-center justify-center h-16 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                                        recommendedType === 'photo'
+                                          ? "border-green-400 bg-green-50 hover:border-green-500"
+                                          : "border-gray-300 hover:border-primary-400"
+                                      )}
+                                    >
+                                      {recommendedType === 'photo' && (
+                                        <span className="absolute top-1 right-1 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                          Рекомендуется
+                                        </span>
+                                      )}
+                                      <FileImage className="w-5 h-5 text-gray-400 mb-1" />
+                                      <span className="text-xs text-gray-600">Фото</span>
+                                    </label>
+                                  </div>
+                                )}
+                                
+                                {allowVideo && (
+                                  <div>
+                                    <input
+                                      type="file"
+                                      id={`video-${index}`}
+                                      accept=".mp4,.mov,.mkv"
+                                      onChange={(e) => {
+                                        handleFileChange(index, e.target.files?.[0] || null, 'video');
+                                        e.target.value = '';
+                                      }}
+                                      className="hidden"
+                                    />
+                                    <label
+                                      htmlFor={`video-${index}`}
+                                      className={cn(
+                                        "relative flex flex-col items-center justify-center h-16 border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                                        recommendedType === 'video'
+                                          ? "border-green-400 bg-green-50 hover:border-green-500"
+                                          : "border-gray-300 hover:border-primary-400"
+                                      )}
+                                    >
+                                      {recommendedType === 'video' && (
+                                        <span className="absolute top-1 right-1 bg-green-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                          Рекомендуется
+                                        </span>
+                                      )}
+                                      <Video className="w-5 h-5 text-gray-400 mb-1" />
+                                      <span className="text-xs text-gray-600">Видео</span>
+                                    </label>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Recommended proof description info box */}
+                              {recommendedType && recommendedDescription && (
+                                <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                                  <div className="flex items-start space-x-2">
+                                    <div className="flex-shrink-0 mt-0.5">
+                                      <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                                      </svg>
+                                    </div>
+                                    <div 
+                                      className="text-xs text-blue-700 flex-1"
+                                      dangerouslySetInnerHTML={{ __html: recommendedDescription }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()
                       ) : (
                         <div className="p-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
                           <div className="flex items-center space-x-2 flex-1 min-w-0">

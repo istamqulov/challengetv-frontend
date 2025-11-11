@@ -8,7 +8,7 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading, verifyToken, tokens } = useAuthStore();
+  const { isAuthenticated, isLoading, isInitialized, verifyToken, tokens } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
@@ -18,7 +18,8 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     }
   }, [tokens, isAuthenticated, verifyToken]);
 
-  if (isLoading) {
+  // Show loading while auth is initializing or during other loading states
+  if (!isInitialized || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loading />

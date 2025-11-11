@@ -22,7 +22,6 @@ import { Loading } from '@/components/ui/Loading';
 import { ParticipantsTab } from '@/components/challenges/ParticipantsTab';
 import { ProgressTableTab } from '@/components/challenges/ProgressTableTab';
 import { MyProgressTab } from '@/components/challenges/MyProgressTab';
-import { SendProgressTab } from '@/components/challenges/SendProgressTab';
 import { AchievementsTab } from '@/components/challenges/AchievementsTab';
 import { JoinChallengeModal } from '@/components/challenges/JoinChallengeModal';
 import { LeaveChallengeModal } from '../components/challenges/LeaveChallengeModal';
@@ -54,7 +53,7 @@ export const ChallengeDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [participantsLoading, setParticipantsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'table' | 'progress' | 'send' | 'achievements'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'participants' | 'table' | 'progress' | 'achievements'>('info');
   const [isJoining, setIsJoining] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [leaveModalOpen, setLeaveModalOpen] = useState(false);
@@ -80,8 +79,8 @@ export const ChallengeDetailPage: React.FC = () => {
     if (tabFromPath === slug) {
       // We're on /challenges/:slug (root path), default to 'info'
       setActiveTab('info');
-    } else if (['participants', 'table', 'progress', 'send', 'achievements'].includes(tabFromPath)) {
-      setActiveTab(tabFromPath as 'participants' | 'table' | 'progress' | 'send' | 'achievements');
+    } else if (['participants', 'table', 'progress', 'achievements'].includes(tabFromPath)) {
+      setActiveTab(tabFromPath as 'participants' | 'table' | 'progress' | 'achievements');
     } else {
       setActiveTab('info');
     }
@@ -91,7 +90,7 @@ export const ChallengeDetailPage: React.FC = () => {
   // Only check after data is loaded to avoid redirecting during page load
   useEffect(() => {
     if (!isLoading && challenge !== null) {
-      if ((!isAuthenticated || !challenge?.joined) && (activeTab === 'progress' || activeTab === 'send')) {
+      if ((!isAuthenticated || !challenge?.joined) && activeTab === 'progress') {
         navigate(`/challenges/${slug}`);
       }
     }
@@ -410,6 +409,18 @@ const handleShare = async () => {
                   </Button>
                 )}
                 
+                {isAuthenticated && challenge.joined && isActive && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => navigate(`/send-progress?challenge=${challenge.slug}`)}
+                    className="flex items-center space-x-1"
+                  >
+                    <Activity className="w-4 h-4" />
+                    <span>Отправить прогресс</span>
+                  </Button>
+                )}
+                
                 {isAuthenticated && challenge.joined && (
                   <Button
                     variant="outline"
@@ -446,7 +457,6 @@ const handleShare = async () => {
                 { id: 'achievements', label: 'Достижения', icon: Award, shortLabel: 'Достижения' },
                 ...(isAuthenticated && challenge?.joined ? [
                   { id: 'progress', label: 'Мой прогресс', icon: Target, shortLabel: 'Прогресс' },
-                  ...(isActive ? [{ id: 'send', label: 'Отправить прогресс', icon: Activity, shortLabel: 'Отправить' }] : []),
                 ] : []),
               ].map((tab) => {
                 const handleTabClick = () => {
@@ -659,8 +669,6 @@ const handleShare = async () => {
           {activeTab === 'achievements' && challenge && <AchievementsTab challengeSlug={challenge.slug} />}
 
           {activeTab === 'progress' && isAuthenticated && <MyProgressTab challenge={challenge} />}
-
-          {activeTab === 'send' && isAuthenticated && <SendProgressTab />}
         </div>
       </div>
 

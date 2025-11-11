@@ -66,6 +66,10 @@ export interface Activity {
   icon?: string | null;
   hp_per_unit: string;
   unit_name: string;
+  allow_photo: boolean;
+  allow_video: boolean;
+  recommended_proof_type: 'photo' | 'video' | null;
+  recommended_proof_description?: string | null;
 }
 
 export interface ChallengeAllowedActivity {
