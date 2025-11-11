@@ -152,9 +152,9 @@ export const HomePage: React.FC = () => {
   const handleSendReport = () => {
     const firstActiveChallenge = getFirstActiveChallenge();
     if (firstActiveChallenge) {
-      navigate(`/challenges/${firstActiveChallenge.slug}/send`);
+      navigate(`/send-progress?challenge=${firstActiveChallenge.slug}`);
     } else {
-      console.warn('No active challenge found for sending report');
+      navigate('/send-progress');
     }
   };
 

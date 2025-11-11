@@ -12,6 +12,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { ProfilePage } from '@/pages/ProfilePage';
 import { ParticipantProgressPage } from '@/pages/ParticipantProgressPage';
+import { SendProgressPage } from '@/pages/SendProgressPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -145,6 +146,16 @@ function App() {
           />
 
           {/* Protected routes */}
+          <Route
+            path="/send-progress"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <SendProgressPage />
+                </Layout>
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/profile"
             element={

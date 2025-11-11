@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Trophy, Award, Plus, TrendingUp, User, LogIn } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
-import { isChallengeActive } from '@/lib/utils';
+import { isChallengeActive, cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api';
 import type { ChallengeList } from '@/types/api';
 
@@ -37,10 +37,10 @@ export const BottomNav: React.FC = () => {
   const handleSendReport = () => {
     const firstActiveChallenge = getFirstActiveChallenge();
     if (firstActiveChallenge) {
-      navigate(`/challenges/${firstActiveChallenge.slug}/send`);
+      navigate(`/send-progress?challenge=${firstActiveChallenge.slug}`);
     } else {
-      // If no active challenge, go to challenges page
-      navigate('/challenges');
+      // If no active challenge, go to send progress page
+      navigate('/send-progress');
     }
   };
 
@@ -117,7 +117,12 @@ export const BottomNav: React.FC = () => {
         <div className="flex-1 flex justify-center">
           <button
             onClick={handleSendReport}
-            className="absolute -top-6 bg-gradient-to-br from-primary-500 to-primary-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+            className={cn(
+              "absolute -top-6 rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95",
+              isActive('/send-progress')
+                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white ring-4 ring-primary-200'
+                : 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
+            )}
           >
             <Plus className="w-7 h-7" />
           </button>
