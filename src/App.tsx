@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { TopBar } from '@/components/layout/TopBar';
 import { MobileHeader } from '@/components/layout/MobileHeader';
 import { BottomNav } from '@/components/layout/BottomNav';
+import { PWAUpdatePrompt } from '@/components/ui/PWAUpdatePrompt';
 import { HomePage } from '@/pages/HomePage';
 import { ChallengesPage } from '@/pages/ChallengesPage';
 import { ChallengeDetailPage } from '@/pages/ChallengeDetailPage';
@@ -54,6 +55,7 @@ function App() {
 
     return (
       <BrowserRouter>
+        <PWAUpdatePrompt />
         <Routes>
           {/* Public routes with layout */}
           <Route
