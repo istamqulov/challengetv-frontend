@@ -368,3 +368,74 @@ export interface AchievementWithUsers {
     earned_at: string;
   }>;
 }
+
+// Feed Types
+export interface FeedItem {
+  id: number;
+  user: User;
+  participant: {
+    id: number;
+    current_streak: number;
+    total_hp_earned: number;
+  };
+  challenge: {
+    id: number;
+    title: string;
+    slug: string;
+  };
+  activity_name: string;
+  quantity: number;
+  hp_earned: number;
+  type: 'photo' | 'video' | 'text';
+  file?: string | null;
+  description: string;
+  date: string;
+  uploaded_at: string;
+  kudos_count: number;
+  comments_count: number;
+  has_user_kudoed: boolean;
+  recent_kudos: Array<{
+    id: number;
+    user: User;
+    created_at: string;
+  }>;
+  recent_comments: Array<{
+    id: number;
+    user: User;
+    text: string;
+    created_at: string;
+    updated_at: string;
+  }>;
+}
+
+export interface FeedResponse extends PaginatedResponse<FeedItem> {}
+
+export interface KudoResponse {
+  message: string;
+  has_kudoed: boolean;
+  kudos_count: number;
+}
+
+export interface Comment {
+  id: number;
+  user: User;
+  text: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CommentListResponse extends PaginatedResponse<Comment> {}
+
+export interface KudoListResponse extends PaginatedResponse<{
+  id: number;
+  user: User;
+  created_at: string;
+}> {}
+
+export interface CreateCommentRequest {
+  text: string;
+}
+
+export interface UpdateCommentRequest {
+  text: string;
+}

@@ -17,6 +17,13 @@ import type {
   ParticipantStats,
   ChallengeAchievement,
   AchievementWithUsers,
+  FeedResponse,
+  FeedItem,
+  KudoResponse,
+  CommentListResponse,
+  KudoListResponse,
+  CreateCommentRequest,
+  UpdateCommentRequest,
 } from '@/types/api';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -228,6 +235,71 @@ class ApiClient {
   // Remove authorization header
   clearAuthToken() {
     delete this.client.defaults.headers.common['Authorization'];
+  }
+
+  // Feed endpoints
+  async getFeed(params?: {
+    page?: number;
+    page_size?: number;
+    challenge_id?: number;
+    user_id?: number;
+    ordering?: string;
+  }): Promise<FeedResponse> {
+    const response = await this.client.get('/participants/feed/', { params });
+    return response.data;
+  }
+
+  // Kudo endpoints
+  async toggleKudo(dailyProgressItemId: number): Promise<KudoResponse> {
+    const response = await this.client.post(
+      `/participants/daily-progress-items/${dailyProgressItemId}/kudo/`
+    );
+    return response.data;
+  }
+
+  async getKudos(dailyProgressItemId: number): Promise<KudoListResponse> {
+    const response = await this.client.get(
+      `/participants/daily-progress-items/${dailyProgressItemId}/kudos/`
+    );
+    return response.data;
+  }
+
+  // Comment endpoints
+  async getComments(dailyProgressItemId: number, params?: {
+    page?: number;
+    page_size?: number;
+  }): Promise<CommentListResponse> {
+    const response = await this.client.get(
+      `/participants/daily-progress-items/${dailyProgressItemId}/comments/`,
+      { params }
+    );
+    return response.data;
+  }
+
+  async createComment(
+    dailyProgressItemId: number,
+    data: CreateCommentRequest
+  ): Promise<Comment> {
+    const response = await this.client.post(
+      `/participants/daily-progress-items/${dailyProgressItemId}/comments/create/`,
+      data
+    );
+    return response.data;
+  }
+
+  async updateComment(
+    commentId: number,
+    data: UpdateCommentRequest
+  ): Promise<Comment> {
+    const response = await this.client.patch(
+      `/participants/comments/${commentId}/`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteComment(commentId: number): Promise<void> {
+    await this.client.delete(`/participants/comments/${commentId}/delete/`);
   }
 }
 

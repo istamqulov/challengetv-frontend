@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, Zap } from 'lucide-react';
+import { Trophy, Zap, TrendingUp, Award } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
 import { PWAInstallButton } from '@/components/ui/PWAInstallButton';
@@ -38,8 +38,28 @@ export const MobileHeader: React.FC = () => {
           </span>
         </Link>
 
-        {/* Right side: PWA Install Button and HP */}
+        {/* Right side: Top, Achievements, PWA Install Button and HP */}
         <div className="flex items-center space-x-2">
+          {/* Top button - only for authenticated users */}
+          {isAuthenticated && (
+            <Link
+              to="/top"
+              className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+            >
+              <TrendingUp className="w-5 h-5" />
+            </Link>
+          )}
+          
+          {/* Achievements button - only for authenticated users */}
+          {isAuthenticated && (
+            <Link
+              to="/achievements"
+              className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+            >
+              <Award className="w-5 h-5" />
+            </Link>
+          )}
+          
           {/* PWA Install Button */}
           <PWAInstallButton />
           

@@ -1,14 +1,33 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, LogOut } from 'lucide-react';
+import { Trophy, LogOut, TrendingUp, Award, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
 import { PWAInstallButton } from '@/components/ui/PWAInstallButton';
+import { apiClient } from '@/lib/api';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated, logout } = useAuthStore();
+  const [totalHP, setTotalHP] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      loadUserStats();
+    }
+  }, [isAuthenticated, user]);
+
+  const loadUserStats = async () => {
+    try {
+      const profile = await apiClient.getCurrentUser();
+      if (profile?.profile) {
+        setTotalHP(profile.profile.total_hp_earned || 0);
+      }
+    } catch (error) {
+      console.error('Error loading user stats:', error);
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -33,25 +52,45 @@ export const TopBar: React.FC = () => {
             <PWAInstallButton />
 
             {/* Desktop Navigation */}
-            <div className="hidden md:flex items-center space-x-6">
+            <div className="hidden md:flex items-center space-x-4">
               <Link
                 to="/challenges"
                 className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
               >
                 Челленджи
               </Link>
-              <Link
-                to="/achievements"
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-              >
-                Достижения
-              </Link>
-              <Link
-                to="/top"
-                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-              >
-                Top
-              </Link>
+              
+              {isAuthenticated && (
+                <>
+                  {/* Top button - icon only */}
+                  <Link
+                    to="/top"
+                    className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+                    title="Top"
+                  >
+                    <TrendingUp className="w-5 h-5" />
+                  </Link>
+                  
+                  {/* Achievements button - icon only */}
+                  <Link
+                    to="/achievements"
+                    className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+                    title="Достижения"
+                  >
+                    <Award className="w-5 h-5" />
+                  </Link>
+                  
+                  {/* Total HP badge */}
+                  {totalHP !== null && (
+                    <div className="flex items-center space-x-1 text-sm bg-primary-50 px-3 py-1 rounded-full">
+                      <Zap className="w-4 h-4 text-primary-600" />
+                      <span className="font-bold text-primary-600">
+                        {totalHP.toLocaleString()} HP
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
               
               {isAuthenticated ? (
                 <div className="flex items-center space-x-4">

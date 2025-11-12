@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Trophy, Award, Plus, TrendingUp, User, LogIn } from 'lucide-react';
+import { Trophy, Plus, User, LogIn, Compass, BarChart3 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { isChallengeActive, cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api';
@@ -29,9 +29,18 @@ export const BottomNav: React.FC = () => {
   };
 
   const getFirstActiveChallenge = (): ChallengeList | null => {
-    return challenges.find(challenge => {
+    // First try to find active challenge where user is joined
+    const activeJoined = challenges.find(challenge => {
       return isChallengeActive(challenge.start_date, challenge.end_date) && challenge.joined === true;
-    }) || null;
+    });
+    if (activeJoined) return activeJoined;
+    
+    // If not found, get first challenge where user is joined
+    const firstJoined = challenges.find(challenge => challenge.joined === true);
+    if (firstJoined) return firstJoined;
+    
+    // If still not found, get first challenge
+    return challenges.length > 0 ? challenges[0] : null;
   };
 
   const handleSendReport = () => {
@@ -41,6 +50,24 @@ export const BottomNav: React.FC = () => {
     } else {
       // If no active challenge, go to send progress page
       navigate('/send-progress');
+    }
+  };
+
+  const handleChallengeClick = () => {
+    const firstChallenge = getFirstActiveChallenge();
+    if (firstChallenge) {
+      navigate(`/challenges/${firstChallenge.slug}`);
+    } else {
+      navigate('/challenges');
+    }
+  };
+
+  const handleMyProgressClick = () => {
+    const firstChallenge = getFirstActiveChallenge();
+    if (firstChallenge) {
+      navigate(`/challenges/${firstChallenge.slug}/progress`);
+    } else {
+      navigate('/challenges');
     }
   };
 
@@ -91,27 +118,27 @@ export const BottomNav: React.FC = () => {
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-[100] will-change-transform" style={{ position: 'fixed', transform: 'translateZ(0)' }}>
       <div className="relative flex items-center justify-around h-16 px-2">
-        {/* Challenges */}
+        {/* Обзор (Explore) */}
         <Link
-          to="/challenges"
+          to="/"
+          className={`flex flex-col items-center justify-center flex-1 transition-colors ${
+            isActive('/') && location.pathname === '/' ? 'text-primary-600' : 'text-gray-600'
+          }`}
+        >
+          <Compass className="w-5 h-5" />
+          <span className="text-xs mt-1">Обзор</span>
+        </Link>
+
+        {/* Challenge */}
+        <button
+          onClick={handleChallengeClick}
           className={`flex flex-col items-center justify-center flex-1 transition-colors ${
             isActive('/challenges') ? 'text-primary-600' : 'text-gray-600'
           }`}
         >
           <Trophy className="w-5 h-5" />
-          <span className="text-xs mt-1">Челленджи</span>
-        </Link>
-
-        {/* Achievements */}
-        <Link
-          to="/achievements"
-          className={`flex flex-col items-center justify-center flex-1 transition-colors ${
-            isActive('/achievements') ? 'text-primary-600' : 'text-gray-600'
-          }`}
-        >
-          <Award className="w-5 h-5" />
-          <span className="text-xs mt-1">Достижения</span>
-        </Link>
+          <span className="text-xs mt-1">Challenge</span>
+        </button>
 
         {/* Send Progress FAB (Floating Action Button) */}
         <div className="flex-1 flex justify-center">
@@ -128,16 +155,16 @@ export const BottomNav: React.FC = () => {
           </button>
         </div>
 
-        {/* Top */}
-        <Link
-          to="/top"
+        {/* My Progress */}
+        <button
+          onClick={handleMyProgressClick}
           className={`flex flex-col items-center justify-center flex-1 transition-colors ${
-            isActive('/top') ? 'text-primary-600' : 'text-gray-600'
+            isActive('/challenges') && location.pathname.includes('/progress') ? 'text-primary-600' : 'text-gray-600'
           }`}
         >
-          <TrendingUp className="w-5 h-5" />
-          <span className="text-xs mt-1">Top</span>
-        </Link>
+          <BarChart3 className="w-5 h-5" />
+          <span className="text-xs mt-1">My Progress</span>
+        </button>
 
         {/* Profile */}
         <Link
@@ -147,7 +174,7 @@ export const BottomNav: React.FC = () => {
           }`}
         >
           <User className="w-5 h-5" />
-          <span className="text-xs mt-1">Профиль</span>
+          <span className="text-xs mt-1">Profile</span>
         </Link>
       </div>
     </nav>

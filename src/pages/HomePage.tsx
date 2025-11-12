@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Award, Calendar, Users, Clock, UserPlus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
@@ -6,9 +6,12 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { JoinChallengeModal } from '@/components/challenges/JoinChallengeModal';
 import { LeaveChallengeModal } from '@/components/challenges/LeaveChallengeModal';
+import { SimpleCalendar } from '@/components/challenges/SimpleCalendar';
+import { FeedItem } from '@/components/challenges/FeedItem';
+import { DiscussionModal } from '@/components/challenges/DiscussionModal';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
-import type { ChallengeList } from '@/types/api';
+import type { ChallengeList, FeedItem as FeedItemType } from '@/types/api';
 import {
   formatDate,
   getChallengeStatusText,
@@ -27,9 +30,79 @@ export const HomePage: React.FC = () => {
   const [selectedChallenge, setSelectedChallenge] = useState<ChallengeList | null>(null);
   const { isAuthenticated } = useAuthStore();
 
+  // Feed state
+  const [feedItems, setFeedItems] = useState<FeedItemType[]>([]);
+  const [isLoadingFeed, setIsLoadingFeed] = useState(false);
+  const [feedNextPage, setFeedNextPage] = useState<string | null>(null);
+  const [discussionModalOpen, setDiscussionModalOpen] = useState(false);
+  const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItemType | null>(null);
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  // Feed functions
+  const loadFeed = useCallback(async () => {
+    setIsLoadingFeed(true);
+    try {
+      const response = await apiClient.getFeed({ page: 1, page_size: 20 });
+      setFeedItems(response.results);
+      setFeedNextPage(response.next);
+    } catch (error) {
+      console.error('Error loading feed:', error);
+    } finally {
+      setIsLoadingFeed(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadChallenges();
-  }, [isAuthenticated]); // Reload when authentication status changes
+    if (isAuthenticated) {
+      loadFeed();
+    }
+  }, [isAuthenticated, loadFeed]); // Reload when authentication status changes
+
+  const loadMoreFeed = useCallback(async () => {
+    if (!feedNextPage || isLoadingFeed) return;
+
+    setIsLoadingFeed(true);
+    try {
+      // Parse the next page URL
+      const url = feedNextPage.startsWith('http')
+        ? feedNextPage
+        : `${(apiClient as any).client.defaults.baseURL}${feedNextPage}`;
+      
+      const response = await (apiClient as any).client.get(url);
+      setFeedItems(prev => [...prev, ...response.data.results]);
+      setFeedNextPage(response.data.next);
+    } catch (error) {
+      console.error('Error loading more feed:', error);
+    } finally {
+      setIsLoadingFeed(false);
+    }
+  }, [feedNextPage, isLoadingFeed]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && feedNextPage && !isLoadingFeed) {
+          loadMoreFeed();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget);
+      }
+    };
+  }, [feedNextPage, isLoadingFeed, isAuthenticated, loadMoreFeed]);
 
   const loadChallenges = async () => {
     try {
@@ -158,8 +231,65 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  const handleCommentClick = (itemId: number) => {
+    const item = feedItems.find(i => i.id === itemId);
+    if (item) {
+      setSelectedFeedItem(item);
+      setDiscussionModalOpen(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Authenticated User Home Page */}
+      {isAuthenticated && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Calendar */}
+          <SimpleCalendar days={10} />
+
+          {/* Feed */}
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Лента активности</h2>
+            
+            {isLoadingFeed && feedItems.length === 0 ? (
+              <div className="flex justify-center items-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+              </div>
+            ) : feedItems.length === 0 ? (
+              <Card>
+                <div className="text-center py-12">
+                  <p className="text-gray-600">Пока нет активности в ленте</p>
+                </div>
+              </Card>
+            ) : (
+              <>
+                {feedItems.map((item) => (
+                  <FeedItem
+                    key={item.id}
+                    item={item}
+                    onCommentClick={handleCommentClick}
+                  />
+                ))}
+                
+                {/* Infinite scroll trigger */}
+                <div ref={observerTarget} className="h-10 flex justify-center items-center">
+                  {isLoadingFeed && feedItems.length > 0 && (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  )}
+                </div>
+
+                {!feedNextPage && feedItems.length > 0 && (
+                  <div className="text-center py-8 text-gray-500 text-sm">
+                    Все записи загружены
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Non-authenticated User Home Page */}
       {!isAuthenticated && (
         <section className="bg-gradient-to-br from-primary-600 to-primary-700 text-white py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -179,145 +309,6 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
       )}
-
-      {/* Send Report Section - Desktop only, mobile uses FAB in bottom nav */}
-      {getFirstActiveChallenge() && (
-        <section className="hidden md:block bg-gradient-to-r from-primary-500 to-primary-700 py-8">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <Card padding={false} className="overflow-hidden bg-white/95 backdrop-blur">
-              <div className="flex items-center justify-between p-6">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center justify-center w-12 h-12 bg-primary-100 rounded-full">
-                    <Upload className="w-6 h-6 text-primary-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">
-                      Отправить отчет
-                    </h2>
-                    <p className="text-sm text-gray-600">
-                      Обновите ваш прогресс
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  variant="primary" 
-                  onClick={handleSendReport}
-                  className="flex items-center space-x-2"
-                >
-                  <Upload className="w-4 h-4" />
-                  <span>Отправить</span>
-                </Button>
-              </div>
-            </Card>
-          </div>
-        </section>
-      )}
-
-      {/* Challenges Section */}
-      <section className="py-8 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Челленджи</h2>
-            <Link to="/challenges" className="text-primary-600 hover:text-primary-700 font-medium text-sm">
-              Все
-            </Link>
-          </div>
-
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
-            </div>
-          ) : challenges.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {challenges.map((challenge) => {
-                return (
-                  <Link key={challenge.id} to={`/challenges/${challenge.slug}`}>
-                    <Card padding={false} hover className="overflow-hidden h-full">
-                      {/* Image */}
-                      <div className="relative w-full h-48 bg-gradient-to-br from-primary-500 to-primary-600">
-                        {challenge.image ? (
-                          <img
-                            src={getImageUrl(challenge.image)}
-                            alt={challenge.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Award className="w-16 h-16 text-white opacity-50" />
-                          </div>
-                        )}
-                        <div className="absolute top-3 right-3">
-                          {getStatusBadge(challenge)}
-                        </div>
-                        {challenge.joined && (
-                          <div className="absolute top-3 left-3">
-                            <Badge variant="info" className="flex items-center space-x-1">
-                              <Users className="w-3 h-3" />
-                              <span>Участвуете</span>
-                            </Badge>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-4">
-                        <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">
-                          {challenge.title}
-                        </h3>
-
-                        {challenge.short_description && (
-                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                            {challenge.short_description}
-                          </p>
-                        )}
-
-                        <div className="space-y-2 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                            <span className="truncate">{formatDate(challenge.start_date)}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                              <Users className="w-4 h-4 mr-2" />
-                              <span>{challenge.participants_count} участников</span>
-                            </div>
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-2" />
-                              <span>{challenge.duration_days} дней</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {isAuthenticated && !challenge.joined && !challenge.is_full && (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={(e) => handleJoinChallenge(challenge, e)}
-                            disabled={joiningChallenges.has(challenge.id)}
-                            className="w-full mt-3 flex items-center justify-center space-x-1"
-                          >
-                            <UserPlus className="w-4 h-4" />
-                            <span>
-                              {joiningChallenges.has(challenge.id) ? 'Загрузка...' : 'Присоединиться'}
-                            </span>
-                          </Button>
-                        )}
-                      </div>
-                    </Card>
-                  </Link>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Award className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-              <p className="text-gray-600">
-                Пока нет активных челленджей
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
 
       {/* Join Challenge Modal */}
       {selectedChallenge && (
@@ -347,6 +338,16 @@ export const HomePage: React.FC = () => {
           isLoading={joiningChallenges.has(selectedChallenge.id)}
         />
       )}
+
+      {/* Discussion Modal */}
+      <DiscussionModal
+        isOpen={discussionModalOpen}
+        onClose={() => {
+          setDiscussionModalOpen(false);
+          setSelectedFeedItem(null);
+        }}
+        feedItem={selectedFeedItem}
+      />
      
     </div>
   );
