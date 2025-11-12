@@ -26,11 +26,19 @@ import type {
 } from '@/types/api';
 import { cn, getErrorMessage, formatLocalDate } from '@/lib/utils';
 
+type VideoMetadata = {
+  duration: number;
+  width: number;
+  height: number;
+  bitrate?: number;
+};
+
 type ProgressItemForm = Omit<DailyProgressUploadItem, 'quantity'> & { 
   quantity: string;
   walkingUnit?: 'steps' | 'meters';
   stepLength?: string;
   subtractRunning?: boolean;
+  videoMetadata?: VideoMetadata;
 };
 
 export const SendProgressPage: React.FC = () => {
@@ -280,7 +288,35 @@ export const SendProgressPage: React.FC = () => {
     setProgressItems(updated);
   };
 
-  const handleFileChange = (index: number, file: File | null, type: 'photo' | 'video') => {
+  const extractVideoMetadata = async (file: File): Promise<VideoMetadata | null> => {
+    return new Promise((resolve) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      
+      video.onloadedmetadata = () => {
+        window.URL.revokeObjectURL(video.src);
+        
+        const metadata: VideoMetadata = {
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight,
+          // Приблизительный битрейт (размер файла / длительность)
+          bitrate: video.duration > 0 ? Math.round((file.size * 8) / video.duration / 1000) : undefined
+        };
+        
+        resolve(metadata);
+      };
+      
+      video.onerror = () => {
+        window.URL.revokeObjectURL(video.src);
+        resolve(null);
+      };
+      
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
+  const handleFileChange = async (index: number, file: File | null, type: 'photo' | 'video') => {
     if (file) {
       const fileExtension = file.name.split('.').pop()?.toLowerCase();
       const maxSize = 300 * 1024 * 1024; // 300MB
@@ -305,6 +341,15 @@ export const SendProgressPage: React.FC = () => {
         file: file,
         type: type
       };
+      
+      // Если это видео, извлекаем метаданные
+      if (type === 'video') {
+        const metadata = await extractVideoMetadata(file);
+        if (metadata) {
+          updated[index].videoMetadata = metadata;
+        }
+      }
+      
       setProgressItems(updated);
       setError(null);
     } else {
@@ -781,14 +826,28 @@ export const SendProgressPage: React.FC = () => {
                           );
                         })()
                       ) : (
-                        <div className="p-2 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                          <div className="flex items-center space-x-2 flex-1 min-w-0">
-                            {item.type === 'photo' ? (
-                              <FileImage className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            ) : (
-                              <Video className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            )}
-                            <span className="text-xs text-green-700 truncate">{item.file.name}</span>
+                        <div className="p-2 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              {item.type === 'photo' ? (
+                                <FileImage className="w-4 h-4 text-green-600 flex-shrink-0" />
+                              ) : (
+                                <Video className="w-4 h-4 text-green-600 flex-shrink-0" />
+                              )}
+                              <div className="flex-1 min-w-0">
+                              <div className="text-xs font-semibold text-green-700 truncate">
+                                {item.file.name}
+                              </div>
+                              <div className="text-xs text-green-600">
+                                {item.type === 'photo' ? 'Фото' : 'Видео'} • {(item.file.size / 1024 / 1024).toFixed(2)} MB
+                              </div>
+                              {item.type === 'video' && item.videoMetadata && (
+                                <div className="text-xs text-green-600 mt-0.5">
+                                  {item.videoMetadata.width}×{item.videoMetadata.height} • {Math.floor(item.videoMetadata.duration / 60)}:{String(Math.floor(item.videoMetadata.duration % 60)).padStart(2, '0')}
+                                  {item.videoMetadata.bitrate && ` • ${Math.round(item.videoMetadata.bitrate)} kbps`}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <button
                             type="button"
@@ -797,6 +856,10 @@ export const SendProgressPage: React.FC = () => {
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+                        </div>
+                        <div className="mt-1 text-xs text-green-600 font-medium">
+                          ✓ Готов к загрузке
+                        </div>
                         </div>
                       )}
                     </div>
