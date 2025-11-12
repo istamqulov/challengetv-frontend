@@ -62,8 +62,8 @@ export const ChallengesPage: React.FC = () => {
         </div>
 
         {/* Search and Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <form onSubmit={handleSearch} className="flex gap-4 mb-4">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-8">
+          <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -76,21 +76,24 @@ export const ChallengesPage: React.FC = () => {
                 />
               </div>
             </div>
-            <Button type="submit" variant="primary">
-              Найти
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Фильтры
-            </Button>
+            <div className="flex gap-2 sm:gap-4">
+              <Button type="submit" variant="primary" className="flex-1 sm:flex-none">
+                Найти
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowFilters(!showFilters)}
+                className="flex-1 sm:flex-none"
+              >
+                <Filter className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Фильтры</span>
+              </Button>
+            </div>
           </form>
 
           {showFilters && (
-            <div className="border-t pt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="border-t pt-4 mt-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Статус
@@ -100,7 +103,7 @@ export const ChallengesPage: React.FC = () => {
                   onChange={(e) =>
                     handleFilterChange('status', e.target.value || undefined)
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
                 >
                   <option value="">Все</option>
                   <option value="active">Активные</option>
@@ -121,7 +124,7 @@ export const ChallengesPage: React.FC = () => {
                       e.target.value === '' ? undefined : e.target.value === 'true'
                     )
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
                 >
                   <option value="">Все</option>
                   <option value="true">Публичные</option>
@@ -136,7 +139,7 @@ export const ChallengesPage: React.FC = () => {
                 <select
                   value={filters.ordering || '-start_date'}
                   onChange={(e) => handleFilterChange('ordering', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-base"
                 >
                   <option value="-start_date">Новые первыми</option>
                   <option value="start_date">Старые первыми</option>
@@ -145,15 +148,15 @@ export const ChallengesPage: React.FC = () => {
                 </select>
               </div>
 
-              <div className="md:col-span-3 flex gap-2">
-                <label className="flex items-center">
+              <div className="sm:col-span-2 md:col-span-3 flex gap-2">
+                <label className="flex items-center cursor-pointer">
                   <input
                     type="checkbox"
                     checked={filters.has_space || false}
                     onChange={(e) =>
                       handleFilterChange('has_space', e.target.checked || undefined)
                     }
-                    className="mr-2 rounded text-primary-600 focus:ring-primary-500"
+                    className="mr-2 rounded text-primary-600 focus:ring-primary-500 w-4 h-4"
                   />
                   <span className="text-sm text-gray-700">Есть свободные места</span>
                 </label>

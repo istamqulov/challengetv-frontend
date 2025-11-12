@@ -84,19 +84,23 @@ export const AchievementsGrid: React.FC<AchievementsGridProps> = ({ achievements
 
   return (
     <>
-      {/* Activity Filter */}
+      {/* Activity Filter - Tag Style */}
       {activities.length > 1 && (
-        <div className="mb-6 flex items-center space-x-3">
-          <label htmlFor="activity-filter" className="text-sm font-medium text-gray-700">
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-3">
             Фильтр по активности:
           </label>
-          <select
-            id="activity-filter"
-            value={selectedActivity}
-            onChange={(e) => setSelectedActivity(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          >
-            <option value="all">Все активности ({achievements.length})</option>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSelectedActivity('all')}
+              className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                selectedActivity === 'all'
+                  ? 'bg-primary-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Все активности ({achievements.length})
+            </button>
             {activities.map(({ key, name }) => {
               const count = achievements.filter((item) => {
                 const itemKey =
@@ -107,12 +111,20 @@ export const AchievementsGrid: React.FC<AchievementsGridProps> = ({ achievements
                 return itemKey === key;
               }).length;
               return (
-                <option key={key} value={key}>
+                <button
+                  key={key}
+                  onClick={() => setSelectedActivity(key)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedActivity === key
+                      ? 'bg-primary-600 text-white shadow-md'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
                   {name} ({count})
-                </option>
+                </button>
               );
             })}
-          </select>
+          </div>
         </div>
       )}
 
