@@ -4,6 +4,7 @@ import { Trophy, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
+import { PWAInstallButton } from '@/components/ui/PWAInstallButton';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
@@ -26,59 +27,65 @@ export const TopBar: React.FC = () => {
             </span>
           </Link>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            <Link
-              to="/challenges"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              Челленджи
-            </Link>
-            <Link
-              to="/achievements"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              Достижения
-            </Link>
-            <Link
-              to="/top"
-              className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-            >
-              Top
-            </Link>
-            
-            {isAuthenticated ? (
-              <div className="flex items-center space-x-4">
-                <Link
-                  to="/profile"
-                  className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
-                >
-                  Привет, {user?.username}!
-                </Link>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleLogout}
-                  className="flex items-center space-x-1"
-                >
-                  <LogOut className="w-4 h-4" />
-                  <span>Выйти</span>
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center space-x-3">
-                <Link to="/login">
-                  <Button variant="outline" size="sm">
-                    Войти
+          {/* Right side: PWA Install Button and Navigation */}
+          <div className="flex items-center space-x-4">
+            {/* PWA Install Button - visible on all screen sizes */}
+            <PWAInstallButton />
+
+            {/* Desktop Navigation */}
+            <div className="hidden md:flex items-center space-x-6">
+              <Link
+                to="/challenges"
+                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
+              >
+                Челленджи
+              </Link>
+              <Link
+                to="/achievements"
+                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
+              >
+                Достижения
+              </Link>
+              <Link
+                to="/top"
+                className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
+              >
+                Top
+              </Link>
+              
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <Link
+                    to="/profile"
+                    className="text-gray-700 hover:text-primary-600 font-medium transition-colors"
+                  >
+                    Привет, {user?.username}!
+                  </Link>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="flex items-center space-x-1"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Выйти</span>
                   </Button>
-                </Link>
-                <Link to="/register">
-                  <Button variant="primary" size="sm">
-                    Регистрация
-                  </Button>
-                </Link>
-              </div>
-            )}
+                </div>
+              ) : (
+                <div className="flex items-center space-x-3">
+                  <Link to="/login">
+                    <Button variant="outline" size="sm">
+                      Войти
+                    </Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button variant="primary" size="sm">
+                      Регистрация
+                    </Button>
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </nav>

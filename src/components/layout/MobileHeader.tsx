@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Trophy, Zap } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
+import { PWAInstallButton } from '@/components/ui/PWAInstallButton';
 
 export const MobileHeader: React.FC = () => {
   const { isAuthenticated, user } = useAuthStore();
@@ -37,15 +38,21 @@ export const MobileHeader: React.FC = () => {
           </span>
         </Link>
 
-        {/* Total HP - only for authenticated users */}
-        {isAuthenticated && totalHP !== null && (
-          <div className="flex items-center space-x-1 text-sm bg-primary-50 px-3 py-1 rounded-full">
-            <Zap className="w-4 h-4 text-primary-600" />
-            <span className="font-bold text-primary-600">
-              {totalHP.toLocaleString()} HP
-            </span>
-          </div>
-        )}
+        {/* Right side: PWA Install Button and HP */}
+        <div className="flex items-center space-x-2">
+          {/* PWA Install Button */}
+          <PWAInstallButton />
+          
+          {/* Total HP - only for authenticated users */}
+          {isAuthenticated && totalHP !== null && (
+            <div className="flex items-center space-x-1 text-sm bg-primary-50 px-3 py-1 rounded-full">
+              <Zap className="w-4 h-4 text-primary-600" />
+              <span className="font-bold text-primary-600">
+                {totalHP.toLocaleString()} HP
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
