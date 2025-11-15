@@ -82,14 +82,14 @@ export const MastersTab: React.FC<MastersTabProps> = ({ challenge }) => {
       {/* Activity Tabs */}
       {activities.length > 0 && (
         <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex flex-wrap gap-2">
+          <div className="border-b border-gray-200 overflow-x-auto">
+            <nav className="-mb-px flex flex-wrap sm:flex-nowrap gap-2 sm:gap-0">
               {activities.map((activity) => (
                 <button
                   key={activity.slug}
                   onClick={() => setSelectedActivity(activity.slug)}
                   className={`
-                    flex items-center space-x-2 py-3 px-4 border-b-2 font-medium text-sm transition-colors
+                    flex items-center space-x-1 sm:space-x-2 py-2 sm:py-3 px-2 sm:px-4 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0
                     ${
                       selectedActivity === activity.slug
                         ? 'border-primary-600 text-primary-600'
@@ -101,10 +101,10 @@ export const MastersTab: React.FC<MastersTabProps> = ({ challenge }) => {
                     <img
                       src={getImageUrl(activity.icon)}
                       alt={activity.name}
-                      className="w-5 h-5"
+                      className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0"
                     />
                   )}
-                  <span>{activity.name}</span>
+                  <span className="truncate">{activity.name}</span>
                 </button>
               ))}
             </nav>
@@ -143,14 +143,14 @@ export const MastersTab: React.FC<MastersTabProps> = ({ challenge }) => {
               {topUsers.map((topUser) => (
                 <div
                   key={topUser.user.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors gap-3 sm:gap-4"
                 >
-                  <div className="flex items-center space-x-4 flex-1">
+                  <div className="flex items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
                     {/* Rank */}
-                    <div className="flex items-center justify-center w-12">
+                    <div className="flex items-center justify-center w-10 sm:w-12 flex-shrink-0">
                       {getRankIcon(topUser.rank) || (
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${getRankBadgeColor(
+                          className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-xs sm:text-sm ${getRankBadgeColor(
                             topUser.rank
                           )}`}
                         >
@@ -160,38 +160,40 @@ export const MastersTab: React.FC<MastersTabProps> = ({ challenge }) => {
                     </div>
 
                     {/* Avatar */}
-                    <Avatar
-                      src={topUser.user.profile?.avatar}
-                      firstName={topUser.user.first_name}
-                      lastName={topUser.user.last_name}
-                      username={topUser.user.username}
-                      size="md"
-                    />
+                    <div className="flex-shrink-0">
+                      <Avatar
+                        src={topUser.user.profile?.avatar}
+                        firstName={topUser.user.first_name}
+                        lastName={topUser.user.last_name}
+                        username={topUser.user.username}
+                        size="md"
+                      />
+                    </div>
 
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <p className="font-semibold text-gray-900 truncate">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 gap-1 sm:gap-0">
+                        <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
                           {topUser.user.first_name} {topUser.user.last_name}
                         </p>
                         {topUser.user.profile?.rank && (
-                          <Badge variant="info" className="text-xs">
+                          <Badge variant="info" className="text-xs w-fit">
                             #{topUser.user.profile.rank}
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600 truncate">
+                      <p className="text-xs sm:text-sm text-gray-600 truncate">
                         @{topUser.user.username}
                       </p>
                     </div>
                   </div>
 
                   {/* Total Quantity */}
-                  <div className="text-right ml-4">
-                    <div className="text-2xl font-bold text-primary-600">
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center sm:text-right ml-0 sm:ml-4 flex-shrink-0">
+                    <div className="text-xl sm:text-2xl font-bold text-primary-600">
                       {topUser.total_quantity.toLocaleString()}
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-xs sm:text-sm text-gray-600">
                       {selectedActivityData.unit_name}
                     </div>
                   </div>
