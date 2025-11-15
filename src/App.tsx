@@ -16,6 +16,7 @@ import { ParticipantProgressPage } from '@/pages/ParticipantProgressPage';
 import { SendProgressPage } from '@/pages/SendProgressPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
+import { initNotificationService } from '@/lib/notificationService';
 
 // Layout Component
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -52,6 +53,15 @@ function App() {
         });
       }
     }, [tokens?.access, isAuthenticated]); // Only depend on access token and auth status
+
+    // Initialize notification service for authenticated users
+    useEffect(() => {
+      if (isAuthenticated && user) {
+        initNotificationService().catch((error) => {
+          console.warn('Failed to initialize notification service:', error);
+        });
+      }
+    }, [isAuthenticated, user]);
 
     return (
       <BrowserRouter>
@@ -108,6 +118,14 @@ function App() {
           />
           <Route
             path="/challenges/:slug/achievements"
+            element={
+              <Layout>
+                <ChallengeDetailPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/challenges/:slug/masters"
             element={
               <Layout>
                 <ChallengeDetailPage />

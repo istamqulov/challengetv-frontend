@@ -439,3 +439,10 @@ export interface CreateCommentRequest {
 export interface UpdateCommentRequest {
   text: string;
 }
+
+// Top Users Types
+export interface TopUser {
+  user: User;
+  total_quantity: number;
+  rank: number;
+}
