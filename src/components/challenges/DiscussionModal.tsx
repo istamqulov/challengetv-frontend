@@ -46,27 +46,26 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
 
     setIsLoading(true);
     try {
-      let response;
       if (pageUrl) {
         // Load next page using full URL
         const fullUrl = pageUrl.startsWith('http') 
           ? pageUrl 
           : `${(apiClient as any).client.defaults.baseURL}${pageUrl}`;
-        response = await (apiClient as any).client.get(fullUrl);
-      } else {
-        response = await apiClient.getComments(feedItem.id, { page_size: 20 });
-      }
-      
-      if (pageUrl) {
+        const response = await (apiClient as any).client.get(fullUrl);
         // Append to existing comments
         setComments(prev => [...prev, ...response.data.results]);
+        setNextPage(response.data.next);
       } else {
-        // Replace comments
-        setComments(response.data.results);
+        // Load first page - getComments returns CommentListResponse directly
+        const response = await apiClient.getComments(feedItem.id, { page_size: 20 });
+        // Replace comments - response is already CommentListResponse (PaginatedResponse)
+        setComments(response.results);
+        setNextPage(response.next);
       }
-      setNextPage(response.data.next);
     } catch (error) {
       console.error('Error loading comments:', error);
+      setComments([]);
+      setNextPage(null);
     } finally {
       setIsLoading(false);
     }

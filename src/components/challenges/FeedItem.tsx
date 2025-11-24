@@ -143,6 +143,51 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, onCommentClick }) => {
           </div>
         )}
 
+        {/* Recent Comments */}
+        {item.recent_comments && item.recent_comments.length > 0 && (
+          <div className="space-y-3 pt-2 border-t border-gray-200">
+            {item.recent_comments.map((comment) => (
+              <div key={comment.id} className="flex space-x-3">
+                <Link to={`/users/${comment.user.id}/profile`} className="flex-shrink-0">
+                  <Avatar
+                    src={comment.user.profile?.avatar}
+                    firstName={comment.user.first_name}
+                    lastName={comment.user.last_name}
+                    username={comment.user.username}
+                    size="sm"
+                  />
+                </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="bg-gray-50 rounded-lg p-3">
+                    <Link 
+                      to={`/users/${comment.user.id}/profile`}
+                      className="block hover:text-primary-600 mb-1"
+                    >
+                      <span className="font-semibold text-sm text-gray-900">
+                        {comment.user.first_name && comment.user.last_name
+                          ? `${comment.user.first_name} ${comment.user.last_name}`
+                          : comment.user.username}
+                      </span>
+                    </Link>
+                    <p className="text-sm text-gray-700">{comment.text}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {formatDateTime(comment.created_at)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {item.comments_count > item.recent_comments.length && (
+              <button
+                onClick={() => onCommentClick(item.id)}
+                className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+              >
+                Показать все комментарии ({item.comments_count})
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Actions */}
         <div className="flex items-center space-x-4 pt-2 border-t border-gray-200">
           <Button
