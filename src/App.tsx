@@ -12,6 +12,7 @@ import { AllAchievementsPage } from '@/pages/AllAchievementsPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { ProfilePage } from '@/pages/ProfilePage';
+import { UserProfilePage } from '@/pages/UserProfilePage';
 import { ParticipantProgressPage } from '@/pages/ParticipantProgressPage';
 import { SendProgressPage } from '@/pages/SendProgressPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -176,6 +177,14 @@ function App() {
                   <ProfilePage />
                 </Layout>
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users/:userId/profile"
+            element={
+              <Layout>
+                <UserProfilePage />
+              </Layout>
             }
           />
 

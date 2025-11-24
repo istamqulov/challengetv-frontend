@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Send, Trash2, Edit2, X } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -144,19 +145,26 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
         {/* Feed Item Summary */}
         <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
           <div className="flex items-center space-x-3 mb-2">
-            <Avatar
-              src={feedItem.user.profile?.avatar}
-              firstName={feedItem.user.first_name}
-              lastName={feedItem.user.last_name}
-              username={feedItem.user.username}
-              size="sm"
-            />
+            <Link to={`/users/${feedItem.user.id}/profile`} className="flex-shrink-0">
+              <Avatar
+                src={feedItem.user.profile?.avatar}
+                firstName={feedItem.user.first_name}
+                lastName={feedItem.user.last_name}
+                username={feedItem.user.username}
+                size="sm"
+              />
+            </Link>
             <div className="flex-1">
-              <div className="font-semibold text-sm text-gray-900">
-                {feedItem.user.first_name && feedItem.user.last_name
-                  ? `${feedItem.user.first_name} ${feedItem.user.last_name}`
-                  : feedItem.user.username}
-              </div>
+              <Link 
+                to={`/users/${feedItem.user.id}/profile`}
+                className="block hover:text-primary-600"
+              >
+                <div className="font-semibold text-sm text-gray-900">
+                  {feedItem.user.first_name && feedItem.user.last_name
+                    ? `${feedItem.user.first_name} ${feedItem.user.last_name}`
+                    : feedItem.user.username}
+                </div>
+              </Link>
               <div className="text-xs text-gray-600">
                 {feedItem.activity_name} • {formatDateTime(feedItem.uploaded_at)}
               </div>
@@ -180,14 +188,26 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="flex space-x-3">
-                <Avatar
-                  src={comment.user.profile?.avatar}
-                  firstName={comment.user.first_name}
-                  lastName={comment.user.last_name}
-                  username={comment.user.username}
-                  size="sm"
-                />
+                <Link to={`/users/${comment.user.id}/profile`} className="flex-shrink-0">
+                  <Avatar
+                    src={comment.user.profile?.avatar}
+                    firstName={comment.user.first_name}
+                    lastName={comment.user.last_name}
+                    username={comment.user.username}
+                    size="sm"
+                  />
+                </Link>
                 <div className="flex-1">
+                  <Link 
+                    to={`/users/${comment.user.id}/profile`}
+                    className="block hover:text-primary-600 mb-1"
+                  >
+                    <div className="font-semibold text-sm text-gray-900">
+                      {comment.user.first_name && comment.user.last_name
+                        ? `${comment.user.first_name} ${comment.user.last_name}`
+                        : comment.user.username}
+                    </div>
+                  </Link>
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1">
                       <div className="font-semibold text-sm text-gray-900">

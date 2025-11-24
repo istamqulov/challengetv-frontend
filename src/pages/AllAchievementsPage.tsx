@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Award, Trophy, Lock, Users, ChevronDown, ChevronUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -288,9 +289,10 @@ export const AllAchievementsPage: React.FC = () => {
                             <div className="flex items-center">
                               <div className="flex -space-x-2">
                                 {visibleUsers.map((userAchievement) => (
-                                  <div
+                                  <Link
                                     key={userAchievement.user.id}
-                                    className="relative"
+                                    to={`/users/${userAchievement.user.id}/profile`}
+                                    className="relative block"
                                     title={`${userAchievement.user.first_name} ${userAchievement.user.last_name}`}
                                   >
                                     <Avatar
@@ -300,9 +302,9 @@ export const AllAchievementsPage: React.FC = () => {
                                       lastName={userAchievement.user.last_name}
                                       username={userAchievement.user.username}
                                       size="sm"
-                                      className="ring-2 ring-white"
+                                      className="ring-2 ring-white hover:ring-primary-400 transition-colors"
                                     />
-                                  </div>
+                                  </Link>
                                 ))}
                                 {hasMoreUsers && (
                                   <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-200 text-gray-600 text-xs font-semibold ring-2 ring-white">
@@ -325,8 +327,9 @@ export const AllAchievementsPage: React.FC = () => {
                               </div>
                               <div className="space-y-2 max-h-64 overflow-y-auto">
                                 {achievement.users.map((userAchievement) => (
-                                  <div
+                                  <Link
                                     key={userAchievement.user.id}
+                                    to={`/users/${userAchievement.user.id}/profile`}
                                     className="flex items-center space-x-3 p-2 rounded-lg hover:bg-white/50 transition-colors"
                                   >
                                     <Avatar
@@ -338,14 +341,14 @@ export const AllAchievementsPage: React.FC = () => {
                                       size="sm"
                                     />
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-medium text-gray-900 truncate">
+                                      <p className="text-sm font-medium text-gray-900 truncate hover:text-primary-600">
                                         {userAchievement.user.first_name} {userAchievement.user.last_name}
                                       </p>
                                       <p className="text-xs text-gray-500">
                                         {formatDate(userAchievement.earned_at, 'dd MMM yyyy, HH:mm')}
                                       </p>
                                     </div>
-                                  </div>
+                                  </Link>
                                 ))}
                               </div>
                             </div>

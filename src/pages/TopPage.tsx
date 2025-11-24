@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Trophy, Medal, Award, Sparkles } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Loading } from '@/components/ui/Loading';
@@ -179,15 +180,19 @@ export const TopPage: React.FC = () => {
                 <div className="flex justify-center mb-3">
                   {getMedalIcon(2)}
                 </div>
-                <Avatar
-                  src={getAvatarUrl(users[1].profile?.avatar)}
-                  alt={users[1].username}
-                  size="lg"
-                  className="mx-auto mb-3"
-                />
-                <h3 className="font-bold text-gray-900 mb-1 truncate">
-                  {users[1].username}
-                </h3>
+                <Link to={`/users/${users[1].id}/profile`} className="block">
+                  <Avatar
+                    src={getAvatarUrl(users[1].profile?.avatar)}
+                    alt={users[1].username}
+                    size="lg"
+                    className="mx-auto mb-3"
+                  />
+                </Link>
+                <Link to={`/users/${users[1].id}/profile`} className="block hover:text-primary-600">
+                  <h3 className="font-bold text-gray-900 mb-1 truncate">
+                    {users[1].username}
+                  </h3>
+                </Link>
                 <p className="text-sm text-gray-600 mb-2">
                   {users[1].first_name && users[1].last_name
                     ? `${users[1].first_name} ${users[1].last_name}`
@@ -209,17 +214,21 @@ export const TopPage: React.FC = () => {
                   {getMedalIcon(1)}
                 </div>
                 <div className="relative mb-3">
-                  <Avatar
-                    src={getAvatarUrl(users[0].profile?.avatar)}
-                    alt={users[0].username}
-                    size="xl"
-                    className="mx-auto"
-                  />
+                  <Link to={`/users/${users[0].id}/profile`} className="block">
+                    <Avatar
+                      src={getAvatarUrl(users[0].profile?.avatar)}
+                      alt={users[0].username}
+                      size="xl"
+                      className="mx-auto"
+                    />
+                  </Link>
                   <Award className="w-6 h-6 text-yellow-500 absolute -top-2 -right-2" />
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1 truncate text-lg">
-                  {users[0].username}
-                </h3>
+                <Link to={`/users/${users[0].id}/profile`} className="block hover:text-primary-600">
+                  <h3 className="font-bold text-gray-900 mb-1 truncate text-lg">
+                    {users[0].username}
+                  </h3>
+                </Link>
                 <p className="text-sm text-gray-600 mb-2">
                   {users[0].first_name && users[0].last_name
                     ? `${users[0].first_name} ${users[0].last_name}`
@@ -240,15 +249,19 @@ export const TopPage: React.FC = () => {
                 <div className="flex justify-center mb-3">
                   {getMedalIcon(3)}
                 </div>
-                <Avatar
-                  src={getAvatarUrl(users[2].profile?.avatar)}
-                  alt={users[2].username}
-                  size="lg"
-                  className="mx-auto mb-3"
-                />
-                <h3 className="font-bold text-gray-900 mb-1 truncate">
-                  {users[2].username}
-                </h3>
+                <Link to={`/users/${users[2].id}/profile`} className="block">
+                  <Avatar
+                    src={getAvatarUrl(users[2].profile?.avatar)}
+                    alt={users[2].username}
+                    size="lg"
+                    className="mx-auto mb-3"
+                  />
+                </Link>
+                <Link to={`/users/${users[2].id}/profile`} className="block hover:text-primary-600">
+                  <h3 className="font-bold text-gray-900 mb-1 truncate">
+                    {users[2].username}
+                  </h3>
+                </Link>
                 <p className="text-sm text-gray-600 mb-2">
                   {users[2].first_name && users[2].last_name
                     ? `${users[2].first_name} ${users[2].last_name}`
@@ -289,17 +302,21 @@ export const TopPage: React.FC = () => {
                 </div>
 
                 {/* Avatar */}
-                <Avatar
-                  src={getAvatarUrl(user.profile?.avatar)}
-                  alt={user.username}
-                  size="md"
-                />
+                <Link to={`/users/${user.id}/profile`} className="flex-shrink-0">
+                  <Avatar
+                    src={getAvatarUrl(user.profile?.avatar)}
+                    alt={user.username}
+                    size="md"
+                  />
+                </Link>
 
                 {/* User Info */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 truncate">
-                    {user.username}
-                  </h3>
+                  <Link to={`/users/${user.id}/profile`} className="block hover:text-primary-600">
+                    <h3 className="font-semibold text-gray-900 truncate">
+                      {user.username}
+                    </h3>
+                  </Link>
                   {user.first_name && user.last_name && (
                     <p className="text-sm text-gray-600 truncate">
                       {user.first_name} {user.last_name}

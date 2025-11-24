@@ -390,6 +390,7 @@ export interface FeedItem {
   file?: string | null;
   description: string;
   date: string;
+  daily_progress_date?: string;
   uploaded_at: string;
   kudos_count: number;
   comments_count: number;
@@ -438,6 +439,46 @@ export interface CreateCommentRequest {
 
 export interface UpdateCommentRequest {
   text: string;
+}
+
+// User Profile Types
+export interface ActivityByType {
+  activity_name: string;
+  activity_slug: string;
+  unit_name: string;
+  total_quantity: number;
+  items_count: number;
+}
+
+export interface UserProfileStatistics {
+  total_hp_earned: number;
+  total_hp_from_items: number;
+  total_challenges_joined: number;
+  total_challenges_completed: number;
+  participations: {
+    total: number;
+    active: number;
+    completed: number;
+  };
+  progress_items: {
+    total: number;
+    approved: number;
+    pending: number;
+  };
+  activities_by_type: ActivityByType[];
+  achievements: {
+    total_count: number;
+  };
+  daily_progress: {
+    total_days: number;
+    avg_hp_per_day: number;
+  };
+}
+
+export interface UserProfileResponse {
+  user: User;
+  profile: UserProfile;
+  statistics: UserProfileStatistics;
 }
 
 // Top Users Types

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Heart, MessageCircle, Play } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { apiClient } from '@/lib/api';
-import { getAvatarUrl, getImageUrl, formatDateTime, formatHP } from '@/lib/utils';
+import { getAvatarUrl, getImageUrl, formatDateTime, formatHP, formatDate } from '@/lib/utils';
 import type { FeedItem as FeedItemType } from '@/types/api';
 
 interface FeedItemProps {
@@ -40,27 +41,40 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, onCommentClick }) => {
       <div className="space-y-4">
         {/* User Info */}
         <div className="flex items-center space-x-3">
-          <Avatar
-            src={item.user.profile?.avatar}
-            firstName={item.user.first_name}
-            lastName={item.user.last_name}
-            username={item.user.username}
-            size="md"
-          />
+          <Link to={`/users/${item.user.id}/profile`} className="flex-shrink-0">
+            <Avatar
+              src={item.user.profile?.avatar}
+              firstName={item.user.first_name}
+              lastName={item.user.last_name}
+              username={item.user.username}
+              size="md"
+            />
+          </Link>
           <div className="flex-1">
-            <div className="font-semibold text-gray-900">
-              {item.user.first_name && item.user.last_name
-                ? `${item.user.first_name} ${item.user.last_name}`
-                : item.user.username}
-            </div>
+            <Link 
+              to={`/users/${item.user.id}/profile`}
+              className="block hover:text-primary-600"
+            >
+              <div className="font-semibold text-gray-900">
+                {item.user.first_name && item.user.last_name
+                  ? `${item.user.first_name} ${item.user.last_name}`
+                  : item.user.username}
+              </div>
+            </Link>
           </div>
         </div>
 
         {/* Activity and Date */}
-        <div className="flex items-center space-x-2 text-sm text-gray-600">
+        <div className="flex items-center space-x-2 text-sm text-gray-600 flex-wrap">
           <span className="font-medium">{item.activity_name}</span>
           <span>•</span>
           <span>{formatDateTime(item.uploaded_at)}</span>
+          {item.daily_progress_date && (
+            <>
+              <span>•</span>
+              <span>Дата прогресса: {formatDate(item.daily_progress_date, 'dd.MM.yyyy')}</span>
+            </>
+          )}
         </div>
 
         {/* Count and HP */}
@@ -109,15 +123,16 @@ export const FeedItem: React.FC<FeedItemProps> = ({ item, onCommentClick }) => {
           <div className="flex items-center space-x-2">
             <div className="flex -space-x-2">
               {item.recent_kudos.slice(0, 5).map((kudo) => (
-                <Avatar
-                  key={kudo.id}
-                  src={kudo.user.profile?.avatar}
-                  firstName={kudo.user.first_name}
-                  lastName={kudo.user.last_name}
-                  username={kudo.user.username}
-                  size="xs"
-                  className="border-2 border-white"
-                />
+                <Link key={kudo.id} to={`/users/${kudo.user.id}/profile`}>
+                  <Avatar
+                    src={kudo.user.profile?.avatar}
+                    firstName={kudo.user.first_name}
+                    lastName={kudo.user.last_name}
+                    username={kudo.user.username}
+                    size="xs"
+                    className="border-2 border-white hover:border-primary-400 transition-colors"
+                  />
+                </Link>
               ))}
             </div>
             {kudosCount > item.recent_kudos.length && (

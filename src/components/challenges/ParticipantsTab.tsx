@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Users, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -73,16 +73,23 @@ export const ParticipantsTab: React.FC<ParticipantsTabProps> = ({
                 <tr key={participant.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <Avatar
-                        firstName={participant.user.first_name}
-                        lastName={participant.user.last_name}
-                        username={participant.user.username}
-                        size="sm"
-                      />
+                      <Link to={`/users/${participant.user.id}/profile`} className="flex-shrink-0">
+                        <Avatar
+                          firstName={participant.user.first_name}
+                          lastName={participant.user.last_name}
+                          username={participant.user.username}
+                          size="sm"
+                        />
+                      </Link>
                       <div className="ml-3">
-                        <div className="text-sm font-medium text-gray-900">
-                          {participant.user.username}
-                        </div>
+                        <Link 
+                          to={`/users/${participant.user.id}/profile`}
+                          className="block hover:text-primary-600"
+                        >
+                          <div className="text-sm font-medium text-gray-900">
+                            {participant.user.username}
+                          </div>
+                        </Link>
                         <div className="text-sm text-gray-500">
                           {participant.user.first_name} {participant.user.last_name}
                         </div>

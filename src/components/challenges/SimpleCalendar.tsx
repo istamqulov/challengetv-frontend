@@ -3,9 +3,15 @@ import { formatLocalDate } from '@/lib/utils';
 
 interface SimpleCalendarProps {
   days?: number;
+  onDateSelect?: (date: string) => void;
+  selectedDate?: string | null;
 }
 
-export const SimpleCalendar: React.FC<SimpleCalendarProps> = ({ days = 10 }) => {
+export const SimpleCalendar: React.FC<SimpleCalendarProps> = ({ 
+  days = 10, 
+  onDateSelect,
+  selectedDate 
+}) => {
   // Generate last N days
   const generateLastDays = (count: number) => {
     const dates = [];
@@ -42,15 +48,22 @@ export const SimpleCalendar: React.FC<SimpleCalendarProps> = ({ days = 10 }) => 
             const dateInfo = formatDateForDisplay(dateString);
             const isToday = dateString === todayDate;
             
+            const isSelected = selectedDate === dateString;
+            const isClickable = !!onDateSelect;
+            
             return (
               <div
                 key={dateString}
+                onClick={() => isClickable && onDateSelect?.(dateString)}
                 className={`
-                  flex flex-col items-center p-3 rounded-lg border-2 min-w-[60px]
-                  ${isToday 
-                    ? 'border-primary-500 bg-primary-50' 
-                    : 'border-gray-200 bg-gray-50'
+                  flex flex-col items-center p-3 rounded-lg border-2 min-w-[60px] transition-colors
+                  ${isSelected
+                    ? 'border-primary-600 bg-primary-100'
+                    : isToday 
+                      ? 'border-primary-500 bg-primary-50' 
+                      : 'border-gray-200 bg-gray-50'
                   }
+                  ${isClickable ? 'cursor-pointer hover:border-primary-400 hover:bg-primary-50' : ''}
                 `}
               >
                 <div className="text-xs font-medium mb-1 text-gray-600">

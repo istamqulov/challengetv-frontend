@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Loading } from '@/components/ui/Loading';
@@ -161,21 +162,28 @@ export const MastersTab: React.FC<MastersTabProps> = ({ challenge }) => {
 
                     {/* Avatar */}
                     <div className="flex-shrink-0">
-                      <Avatar
-                        src={topUser.user.profile?.avatar}
-                        firstName={topUser.user.first_name}
-                        lastName={topUser.user.last_name}
-                        username={topUser.user.username}
-                        size="md"
-                      />
+                      <Link to={`/users/${topUser.user.id}/profile`}>
+                        <Avatar
+                          src={topUser.user.profile?.avatar}
+                          firstName={topUser.user.first_name}
+                          lastName={topUser.user.last_name}
+                          username={topUser.user.username}
+                          size="md"
+                        />
+                      </Link>
                     </div>
 
                     {/* User Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2 gap-1 sm:gap-0">
-                        <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
-                          {topUser.user.first_name} {topUser.user.last_name}
-                        </p>
+                        <Link 
+                          to={`/users/${topUser.user.id}/profile`}
+                          className="block hover:text-primary-600"
+                        >
+                          <p className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                            {topUser.user.first_name} {topUser.user.last_name}
+                          </p>
+                        </Link>
                         {topUser.user.profile?.rank && (
                           <Badge variant="info" className="text-xs w-fit">
                             #{topUser.user.profile.rank}

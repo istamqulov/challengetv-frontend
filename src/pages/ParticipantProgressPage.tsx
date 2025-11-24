@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -105,7 +105,13 @@ export const ParticipantProgressPage: React.FC = () => {
           Вернуться к участникам
         </Button>
         <h1 className="text-3xl font-bold text-gray-900">
-          Прогресс {participant.user.username}
+          Прогресс{' '}
+          <Link 
+            to={`/users/${participant.user.id}/profile`}
+            className="text-primary-600 hover:text-primary-700"
+          >
+            {participant.user.username}
+          </Link>
         </h1>
         <p className="text-gray-600 mt-2">
           {challenge.title}

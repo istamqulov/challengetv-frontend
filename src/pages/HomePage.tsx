@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Award, Calendar, Users, Clock, UserPlus, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -22,6 +22,7 @@ import {
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [challenges, setChallenges] = useState<ChallengeList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [joiningChallenges, setJoiningChallenges] = useState<Set<number>>(new Set());
@@ -37,16 +38,25 @@ export const HomePage: React.FC = () => {
   const [discussionModalOpen, setDiscussionModalOpen] = useState(false);
   const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItemType | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
+  
+  // Get selected date from URL
+  const selectedDate = searchParams.get('daily_progress_date');
 
   // Feed functions
-  const loadFeed = useCallback(async () => {
+  const loadFeed = useCallback(async (date?: string | null) => {
     setIsLoadingFeed(true);
     try {
-      const response = await apiClient.getFeed({ page: 1, page_size: 20 });
+      const params: any = { page: 1, page_size: 20 };
+      if (date) {
+        params.daily_progress_date = date;
+      }
+      const response = await apiClient.getFeed(params);
       setFeedItems(response.results);
       setFeedNextPage(response.next);
     } catch (error) {
       console.error('Error loading feed:', error);
+      setFeedItems([]);
+      setFeedNextPage(null);
     } finally {
       setIsLoadingFeed(false);
     }
@@ -55,9 +65,9 @@ export const HomePage: React.FC = () => {
   useEffect(() => {
     loadChallenges();
     if (isAuthenticated) {
-      loadFeed();
+      loadFeed(selectedDate);
     }
-  }, [isAuthenticated, loadFeed]); // Reload when authentication status changes
+  }, [isAuthenticated, selectedDate, loadFeed]); // Reload when authentication status or date changes
 
   const loadMoreFeed = useCallback(async () => {
     if (!feedNextPage || isLoadingFeed) return;
@@ -239,13 +249,27 @@ export const HomePage: React.FC = () => {
     }
   };
 
+  const handleDateSelect = (date: string) => {
+    const newSearchParams = new URLSearchParams(searchParams);
+    if (date) {
+      newSearchParams.set('daily_progress_date', date);
+    } else {
+      newSearchParams.delete('daily_progress_date');
+    }
+    setSearchParams(newSearchParams);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Authenticated User Home Page */}
       {isAuthenticated && (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Calendar */}
-          <SimpleCalendar days={10} />
+          <SimpleCalendar 
+            days={10} 
+            onDateSelect={handleDateSelect}
+            selectedDate={selectedDate}
+          />
 
           {/* Feed */}
           <div>

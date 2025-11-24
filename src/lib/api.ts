@@ -25,6 +25,7 @@ import type {
   CreateCommentRequest,
   UpdateCommentRequest,
   TopUser,
+  UserProfileResponse,
 } from '@/types/api';
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api/v1';
@@ -245,6 +246,7 @@ class ApiClient {
     challenge_id?: number;
     user_id?: number;
     ordering?: string;
+    daily_progress_date?: string;
   }): Promise<FeedResponse> {
     const response = await this.client.get('/participants/feed/', { params });
     return response.data;
@@ -306,6 +308,12 @@ class ApiClient {
   // Top users by activity
   async getTopUsersByActivity(slug: string, activitySlug: string): Promise<TopUser[]> {
     const response = await this.client.get(`/challenges/${slug}/top-users/${activitySlug}/`);
+    return response.data;
+  }
+
+  // Get user profile
+  async getUserProfile(userId: number): Promise<UserProfileResponse> {
+    const response = await this.client.get(`/users/${userId}/profile/`);
     return response.data;
   }
 }
