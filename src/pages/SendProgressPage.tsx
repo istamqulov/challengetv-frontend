@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   Activity, 
@@ -7,7 +7,6 @@ import {
   Upload, 
   Calendar,
   Target,
-  Zap,
   FileImage,
   Video,
   CheckCircle,
@@ -39,6 +38,14 @@ type ProgressItemForm = Omit<DailyProgressUploadItem, 'quantity'> & {
   stepLength?: string;
   subtractRunning?: boolean;
   videoMetadata?: VideoMetadata;
+};
+
+type AdjustedQuantity = {
+  quantity: number;
+  rawQuantity: number;
+  deduction: number;
+  defaultSubtract: boolean;
+  availableRunning: number;
 };
 
 export const SendProgressPage: React.FC = () => {
@@ -93,13 +100,14 @@ export const SendProgressPage: React.FC = () => {
       description: '',
       walkingUnit: 'steps',
       stepLength: '0.7',
-      subtractRunning: false,
     }
   ]);
 
   const [totalHp, setTotalHp] = useState(0);
   const [requiredHp, setRequiredHp] = useState(0);
   const [existingProgressHp, setExistingProgressHp] = useState(0);
+  const [existingRunningQuantity, setExistingRunningQuantity] = useState(0);
+  const [existingWalkingQuantity, setExistingWalkingQuantity] = useState(0);
 
   // Load user's active challenges
   useEffect(() => {
@@ -115,11 +123,7 @@ export const SendProgressPage: React.FC = () => {
 
   useEffect(() => {
     loadExistingProgress();
-  }, [selectedDate, selectedChallengeSlug, participant]);
-
-  useEffect(() => {
-    calculateTotalHp();
-  }, [progressItems, challenge, existingProgressHp]);
+  }, [selectedDate, selectedChallengeSlug, participant, challenge]);
 
   const loadUserChallenges = async () => {
     setIsLoading(true);
@@ -184,6 +188,8 @@ export const SendProgressPage: React.FC = () => {
   const loadExistingProgress = async () => {
     if (!selectedChallengeSlug || !participant || !selectedDate) {
       setExistingProgressHp(0);
+      setExistingRunningQuantity(0);
+      setExistingWalkingQuantity(0);
       return;
     }
 
@@ -193,37 +199,84 @@ export const SendProgressPage: React.FC = () => {
       
       if (progressForDate) {
         setExistingProgressHp(progressForDate.total_hp || 0);
+        const runningQuantity = progressForDate.items.reduce((sum, item) => {
+          if (isRunningActivity(item.activity, item.activity_name)) {
+            return sum + (item.quantity || 0);
+          }
+          return sum;
+        }, 0);
+        setExistingRunningQuantity(runningQuantity);
+        
+        const walkingQuantity = progressForDate.items.reduce((sum, item) => {
+          if (isWalkingActivity(item.activity, item.activity_name)) {
+            return sum + (item.quantity || 0);
+          }
+          return sum;
+        }, 0);
+        setExistingWalkingQuantity(walkingQuantity);
       } else {
         setExistingProgressHp(0);
+        setExistingRunningQuantity(0);
+        setExistingWalkingQuantity(0);
       }
     } catch (err) {
       setExistingProgressHp(0);
+      setExistingRunningQuantity(0);
+      setExistingWalkingQuantity(0);
     }
   };
 
-  const getActivitySlug = (activityId: number): string | null => {
-    if (!challenge) return null;
-    const activity = challenge.allowed_activities?.find(
-      allowedActivity => allowedActivity.activity.id === activityId
+  const getActivityMeta = (activityId?: number) => {
+    if (!challenge || !activityId) return null;
+    return (
+      challenge.allowed_activities?.find(
+        allowedActivity => allowedActivity.activity.id === activityId
+      )?.activity || null
     );
-    return activity?.activity.slug || null;
   };
 
-  const metersToSteps = (meters: number, stepLength: number): number => {
-    if (stepLength <= 0) return 0;
-    return Math.round(meters / stepLength);
+  const getActivitySlug = (activityId: number): string | null => {
+    return getActivityMeta(activityId)?.slug || null;
+  };
+
+  const isWalkingActivity = (activityId?: number, activityName?: string): boolean => {
+    if (!activityId) return false;
+    const meta = getActivityMeta(activityId);
+    const slug = meta?.slug?.toLowerCase();
+    const title = (activityName || meta?.name || '').toLowerCase();
+    return (
+      slug === 'walking' ||
+      slug === 'walk' ||
+      title.includes('шаг') ||
+      title.includes('walk')
+    );
+  };
+
+  const isRunningActivity = (activityId?: number, activityName?: string): boolean => {
+    if (!activityId) return false;
+    const meta = getActivityMeta(activityId);
+    const slug = meta?.slug?.toLowerCase();
+    const title = (activityName || meta?.name || '').toLowerCase();
+    return (
+      (slug ? ['run', 'running', 'jog'].some(key => slug.includes(key)) : false) ||
+      title.includes('бег') ||
+      title.includes('run')
+    );
+  };
+
+  const metersToSteps = (meters: number): number => {
+    // 1 метр = 1,37 шага
+    return Math.round(meters * 1.37);
   };
 
   const getQuantityValue = (item: ProgressItemForm): number => {
     const activitySlug = getActivitySlug(item.activity);
     
     if (activitySlug === 'walking') {
-      const stepLength = parseFloat(item.stepLength || '0.7');
-      
       let steps = 0;
       if (item.walkingUnit === 'meters') {
         const meters = parseFloat(item.quantity || '0');
-        steps = metersToSteps(meters, stepLength);
+        steps = metersToSteps(meters);
       } else {
         steps = Math.trunc(parseFloat(item.quantity || '0'));
       }
@@ -243,26 +296,83 @@ export const SendProgressPage: React.FC = () => {
     return Number.isFinite(parsed) ? parsed : 0;
   };
 
-  const calculateTotalHp = () => {
+  const currentRunningQuantity = useMemo(() => {
+    if (!challenge) return 0;
+    return progressItems.reduce((sum, item) => {
+      if (!isRunningActivity(item.activity)) {
+        return sum;
+      }
+      return sum + getQuantityValue(item);
+    }, 0);
+  }, [progressItems, challenge]);
+
+  // Если уже были отправлены шаги ходьбы за день, то весь существующий бег уже был вычтен
+  // Для вычета доступен только новый бег из текущей формы
+  const totalRunningQuantityForDeduction = useMemo(() => {
+    if (existingWalkingQuantity > 0) {
+      // Если есть существующие шаги ходьбы, значит весь существующий бег уже был вычтен
+      // Вычитаем только новый бег из формы
+      return currentRunningQuantity;
+    } else {
+      // Если нет существующих шагов ходьбы, можно вычитать весь бег (существующий + новый)
+      return existingRunningQuantity + currentRunningQuantity;
+    }
+  }, [existingWalkingQuantity, existingRunningQuantity, currentRunningQuantity]);
+
+  const adjustedQuantities = useMemo<AdjustedQuantity[]>(() => {
+    const rawValues = progressItems.map(item => getQuantityValue(item));
+    let remainingRunning = totalRunningQuantityForDeduction;
+
+    return progressItems.map((item, index) => {
+      const rawQuantity = rawValues[index];
+      const availableRunning = Math.max(0, remainingRunning);
+      let deduction = 0;
+      let defaultSubtract = false;
+
+      if (isWalkingActivity(item.activity) && rawQuantity > 0) {
+        defaultSubtract = availableRunning > 0 && availableRunning < rawQuantity;
+        const wantsSubtract = typeof item.subtractRunning === 'boolean'
+          ? item.subtractRunning
+          : defaultSubtract;
+
+        if (wantsSubtract && availableRunning > 0) {
+          deduction = Math.min(rawQuantity, availableRunning);
+          remainingRunning -= deduction;
+        }
+      }
+
+      return {
+        quantity: Math.max(0, rawQuantity - deduction),
+        rawQuantity,
+        deduction,
+        defaultSubtract,
+        availableRunning,
+      };
+    });
+  }, [progressItems, totalRunningQuantityForDeduction, challenge]);
+
+  const hasRunningForDeduction = totalRunningQuantityForDeduction > 0;
+
+  useEffect(() => {
     if (!challenge) return;
 
     let newHp = 0;
-    progressItems.forEach(item => {
-      const quantityValue = getQuantityValue(item);
-      if (item.activity && quantityValue > 0) {
+    adjustedQuantities.forEach(({ quantity }, index) => {
+      const item = progressItems[index];
+      if (item.activity && quantity > 0) {
         const activity = challenge.allowed_activities?.find(
           allowedActivity => allowedActivity.activity.id === item.activity
         );
         if (activity) {
           const hpPerUnit = parseFloat(activity.activity.hp_per_unit);
-          newHp += hpPerUnit * quantityValue;
+          newHp += hpPerUnit * quantity;
         }
       }
     });
-    
+
     const total = existingProgressHp + newHp;
     setTotalHp(total);
-  };
+  }, [adjustedQuantities, challenge, existingProgressHp, progressItems]);
 
   const addProgressItem = () => {
     setProgressItems([...progressItems, {
@@ -272,7 +382,6 @@ export const SendProgressPage: React.FC = () => {
       description: '',
       walkingUnit: 'steps',
       stepLength: '0.7',
-      subtractRunning: false,
     }]);
   };
 
@@ -285,6 +394,12 @@ export const SendProgressPage: React.FC = () => {
   const updateProgressItem = (index: number, field: keyof ProgressItemForm, value: any) => {
     const updated = [...progressItems];
     updated[index] = { ...updated[index], [field]: value };
+    if (field === 'activity') {
+      const nextActivityId = typeof value === 'string' ? parseInt(value, 10) : value;
+      if (!isWalkingActivity(nextActivityId)) {
+        updated[index].subtractRunning = undefined;
+      }
+    }
     setProgressItems(updated);
   };
 
@@ -375,9 +490,9 @@ export const SendProgressPage: React.FC = () => {
       return;
     }
 
-    const normalizedItems: DailyProgressUploadItem[] = progressItems.map(item => ({
+    const normalizedItems: DailyProgressUploadItem[] = progressItems.map((item, index) => ({
       activity: item.activity,
-      quantity: getQuantityValue(item),
+      quantity: adjustedQuantities[index]?.quantity ?? getQuantityValue(item),
       type: item.type,
       file: item.file,
       description: item.description,
@@ -417,7 +532,6 @@ export const SendProgressPage: React.FC = () => {
         description: '',
         walkingUnit: 'steps',
         stepLength: '0.7',
-        subtractRunning: false,
       }]);
       setUploadProgress(0);
       
@@ -449,8 +563,8 @@ export const SendProgressPage: React.FC = () => {
     return activity ? activity.activity.unit_name : null;
   };
 
-  const getItemHp = (item: ProgressItemForm): number => {
-    const quantityValue = getQuantityValue(item);
+  const getItemHp = (item: ProgressItemForm, index: number): number => {
+    const quantityValue = adjustedQuantities[index]?.quantity ?? getQuantityValue(item);
     if (!item.activity || !quantityValue) return 0;
     return getActivityHpPerUnit(item.activity) * quantityValue;
   };
@@ -660,6 +774,17 @@ export const SendProgressPage: React.FC = () => {
             <div className="space-y-4">
               {progressItems.map((item, index) => {
                 const unitName = getActivityUnitName(item.activity);
+                const adjustedInfo = adjustedQuantities[index];
+                const adjustedQuantity = adjustedInfo?.quantity ?? 0;
+                const runningDeduction = adjustedInfo?.deduction ?? 0;
+                const defaultSubtract = adjustedInfo?.defaultSubtract ?? false;
+                const checkboxChecked = typeof item.subtractRunning === 'boolean'
+                  ? item.subtractRunning
+                  : defaultSubtract;
+                const availableRunningForItem = adjustedInfo?.availableRunning ?? 0;
+                const potentialDeduction = Math.min(adjustedInfo?.rawQuantity ?? 0, availableRunningForItem);
+                const canShowSubtractCheckbox = isWalkingActivity(item.activity) && hasRunningForDeduction;
+                const checkboxDisabled = potentialDeduction <= 0;
 
                 return (
                   <div key={index} className="bg-white border border-gray-200 rounded-lg p-3 md:p-4">
@@ -718,6 +843,74 @@ export const SendProgressPage: React.FC = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                       />
                     </div>
+
+                    {/* Walking Unit Selector */}
+                    {isWalkingActivity(item.activity) && (
+                      <div className="mb-3">
+                        <label className="block text-xs font-medium text-gray-700 mb-2">
+                          Единица измерения
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateProgressItem(index, 'walkingUnit', 'steps')}
+                            className={cn(
+                              'p-2 border rounded-lg text-sm transition-all',
+                              item.walkingUnit === 'steps' || !item.walkingUnit
+                                ? 'border-primary-500 bg-primary-50 text-primary-700 font-semibold'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                            )}
+                          >
+                            Шаги
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateProgressItem(index, 'walkingUnit', 'meters')}
+                            className={cn(
+                              'p-2 border rounded-lg text-sm transition-all',
+                              item.walkingUnit === 'meters'
+                                ? 'border-primary-500 bg-primary-50 text-primary-700 font-semibold'
+                                : 'border-gray-200 hover:border-gray-300 text-gray-700'
+                            )}
+                          >
+                            Метры
+                          </button>
+                        </div>
+                        {item.walkingUnit === 'meters' && item.quantity && parseFloat(item.quantity) > 0 && (
+                          <div className="mt-2 text-xs text-gray-600">
+                            Будет конвертировано: {metersToSteps(parseFloat(item.quantity || '0')).toLocaleString('ru-RU')} шагов
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {canShowSubtractCheckbox && (
+                      <div className="mt-2 flex items-start space-x-2">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 mt-0.5"
+                          checked={checkboxDisabled ? false : checkboxChecked}
+                          disabled={checkboxDisabled}
+                          onChange={(e) => updateProgressItem(index, 'subtractRunning', e.target.checked)}
+                        />
+                        <div className="text-xs text-gray-600">
+                          <span className="font-semibold text-gray-800 block">
+                            Отнять шаги бега
+                          </span>
+                          {checkboxDisabled ? (
+                            <span>Нет доступных метров бега для вычета</span>
+                          ) : checkboxChecked ? (
+                            <span>
+                              Будет вычтено {runningDeduction.toLocaleString('ru-RU')} шагов
+                            </span>
+                          ) : (
+                            <span>
+                              Можно вычесть до {potentialDeduction.toLocaleString('ru-RU')} шагов
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     {/* File Upload - Compact */}
                     <div className="mb-3">
@@ -865,10 +1058,10 @@ export const SendProgressPage: React.FC = () => {
                     </div>
 
                     {/* HP Preview */}
-                    {item.activity && getQuantityValue(item) > 0 && (
+                    {item.activity && adjustedQuantity > 0 && (
                       <div className="p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-center justify-between">
                         <span className="text-xs font-medium text-blue-700">HP за элемент:</span>
-                        <span className="text-sm font-bold text-blue-600">{getItemHp(item).toFixed(1)} HP</span>
+                        <span className="text-sm font-bold text-blue-600">{getItemHp(item, index).toFixed(1)} HP</span>
                       </div>
                     )}
                   </div>

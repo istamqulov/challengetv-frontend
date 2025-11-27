@@ -318,9 +318,9 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-sm text-gray-600">total hp</div>
+                <div className="text-sm text-gray-600">HP (итог/норма)</div>
                 <div className="text-lg font-semibold text-gray-900">
-                  {isStatsLoading ? '—' : `${stats?.total_hp ?? 0}`}
+                  {isStatsLoading ? '—' : `${stats?.total_hp ?? 0}/${stats?.total_hp_required ?? 0}`}
                 </div>
               </div>
             </div>
