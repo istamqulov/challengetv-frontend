@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageCircle, Send, Trash2, Edit2 } from 'lucide-react';
-import { motion, useMotionValue, useTransform, useSpring, PanInfo } from 'framer-motion';
+import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { apiClient } from '@/lib/api';
@@ -43,8 +43,6 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   const [isTogglingKudo, setIsTogglingKudo] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [currentItem, setCurrentItem] = useState<FeedItem | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragY, setDragY] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -112,8 +110,8 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
       if (currentItem?.id !== feedItem.id) {
         // Item changed - reset transition state
         setCurrentItem(feedItem);
-        // Reset y position when item changes
-        y.set(0);
+        // Don't reset y position here - let navigateToItem handle it
+        // This prevents double animation when item changes
       }
       setKudosCount(feedItem.kudos_count);
       setHasKudoed(feedItem.has_user_kudoed);
@@ -138,6 +136,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
       setShowComments(false);
       setCurrentItem(null);
       y.set(0);
+      setIsTransitioning(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, feedItem, showComments, loadComments]);
@@ -157,7 +156,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
       const comment = await apiClient.createComment(feedItem.id, {
         text: newComment.trim(),
       });
-      setComments(prev => [comment, ...prev]);
+      setComments(prev => [comment, ...prev] as Comment[]);
       setNewComment('');
     } catch (error) {
       console.error('Error creating comment:', error);
@@ -174,7 +173,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
         text: editingText.trim(),
       });
       setComments(prev =>
-        prev.map(c => (c.id === commentId ? updated : c))
+        prev.map(c => (c.id === commentId ? updated : c)) as Comment[]
       );
       setEditingCommentId(null);
       setEditingText('');
@@ -293,24 +292,26 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     setEditingText('');
     setNextPage(null);
 
-    // Get current position and animate to completion
-    const currentY = y.get();
     const windowHeight = window.innerHeight;
-    
-    // Continue animation from current position to full screen
     const targetY = direction === 'next' ? -windowHeight : windowHeight;
     
-    // Animate smoothly to target
+    // Animate to completion
     y.set(targetY);
 
-    // Update item after animation completes
+    // Update item in the middle of animation to prevent double animation
     setTimeout(() => {
       if (onItemChange) {
         onItemChange(newItem);
       }
-      // Reset position for new item
-      y.set(0);
-      setIsTransitioning(false);
+    }, 200);
+
+    // Reset position after animation completes
+    setTimeout(() => {
+      // Use requestAnimationFrame to ensure smooth transition
+      requestAnimationFrame(() => {
+        y.set(0);
+        setIsTransitioning(false);
+      });
     }, 400);
   };
 
