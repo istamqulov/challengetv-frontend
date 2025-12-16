@@ -15,6 +15,7 @@ import { ProfilePage } from '@/pages/ProfilePage';
 import { UserProfilePage } from '@/pages/UserProfilePage';
 import { ParticipantProgressPage } from '@/pages/ParticipantProgressPage';
 import { SendProgressPage } from '@/pages/SendProgressPage';
+import { GalleryView } from '@/pages/GalleryView';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 import { initNotificationService } from '@/lib/notificationService';
@@ -168,6 +169,16 @@ function App() {
               <Layout>
                 <AllAchievementsPage />
               </Layout>
+            }
+          />
+          <Route
+            path="/explore"
+            element={
+              <ProtectedRoute>
+                <Layout>
+                  <GalleryView />
+                </Layout>
+              </ProtectedRoute>
             }
           />
 
