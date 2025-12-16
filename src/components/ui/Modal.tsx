@@ -63,7 +63,7 @@ export const Modal: React.FC<ModalProps> = ({
         >
           {/* Header */}
           {(title || showCloseButton) && (
-            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+            <div className="flex items-center justify-between border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4">
               {title && (
                 <h3 className="text-lg font-semibold text-gray-900">
                   {title}
@@ -72,9 +72,10 @@ export const Modal: React.FC<ModalProps> = ({
               {showCloseButton && (
                 <button
                   onClick={onClose}
-                  className="text-gray-400 hover:text-gray-500 transition-colors"
+                  className="text-gray-600 hover:text-gray-900 active:text-gray-900 transition-colors p-2 -mr-2 sm:-mr-0 touch-manipulation"
+                  aria-label="Закрыть"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-7 h-7 sm:w-6 sm:h-6" />
                 </button>
               )}
             </div>

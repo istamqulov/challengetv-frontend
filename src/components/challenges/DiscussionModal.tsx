@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, Trash2, Edit2, X, Play } from 'lucide-react';
+import { Send, Trash2, Edit2, X, Play, Heart, MessageCircle } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
@@ -28,16 +28,23 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editingText, setEditingText] = useState('');
   const [nextPage, setNextPage] = useState<string | null>(null);
+  const [kudosCount, setKudosCount] = useState<number>(0);
+  const [hasKudoed, setHasKudoed] = useState<boolean>(false);
+  const [isTogglingKudo, setIsTogglingKudo] = useState(false);
 
   useEffect(() => {
     if (isOpen && feedItem) {
       loadComments();
+      setKudosCount(feedItem.kudos_count);
+      setHasKudoed(feedItem.has_user_kudoed);
     } else {
       setComments([]);
       setNewComment('');
       setEditingCommentId(null);
       setEditingText('');
       setNextPage(null);
+      setKudosCount(0);
+      setHasKudoed(false);
     }
   }, [isOpen, feedItem]);
 
@@ -127,6 +134,21 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
     setEditingText('');
   };
 
+  const handleToggleKudo = async () => {
+    if (!feedItem || isTogglingKudo) return;
+    
+    setIsTogglingKudo(true);
+    try {
+      const response = await apiClient.toggleKudo(feedItem.id);
+      setHasKudoed(response.has_kudoed);
+      setKudosCount(response.kudos_count);
+    } catch (error) {
+      console.error('Error toggling kudo:', error);
+    } finally {
+      setIsTogglingKudo(false);
+    }
+  };
+
   if (!feedItem) return null;
 
   const isOwnComment = (comment: Comment) => {
@@ -200,6 +222,26 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
             )}
           </div>
         )}
+
+        {/* Actions (Likes and Comments) */}
+        <div className="flex items-center space-x-4 pt-2 border-t border-gray-200">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleToggleKudo}
+            disabled={isTogglingKudo}
+            className={`flex items-center space-x-2 ${
+              hasKudoed ? 'text-red-600' : 'text-gray-600'
+            }`}
+          >
+            <Heart className={`w-5 h-5 ${hasKudoed ? 'fill-current' : ''}`} />
+            <span>{kudosCount}</span>
+          </Button>
+          <div className="flex items-center space-x-2 text-gray-600">
+            <MessageCircle className="w-5 h-5" />
+            <span>{feedItem.comments_count}</span>
+          </div>
+        </div>
 
         {/* Comments List */}
         <div className="space-y-4 max-h-96 overflow-y-auto">
