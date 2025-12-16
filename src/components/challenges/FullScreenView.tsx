@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageCircle, Send, Trash2, Edit2 } from 'lucide-react';
-import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { apiClient } from '@/lib/api';
@@ -42,30 +41,8 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   const [hasKudoed, setHasKudoed] = useState<boolean>(false);
   const [isTogglingKudo, setIsTogglingKudo] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [currentItem, setCurrentItem] = useState<FeedItem | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [pendingItem, setPendingItem] = useState<FeedItem | null>(null);
+  const [displayedItem, setDisplayedItem] = useState<FeedItem | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  
-  // Initialize motion values only when component is mounted
-  // These must be called before any conditional returns
-  const y = useMotionValue(0);
-  
-  // Get window height safely (must be before conditional return)
-  const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
-  
-  // Transform values for current and next/prev items (must be before conditional return)
-  // Use y directly without spring to avoid double animations
-  const currentY = useTransform(y, (value) => value || 0);
-  const nextY = useTransform(y, (value) => {
-    const val = value || 0;
-    return val < 0 ? windowHeight + val : windowHeight;
-  });
-  const prevY = useTransform(y, (value) => {
-    const val = value || 0;
-    return val > 0 ? -windowHeight + val : -windowHeight;
-  });
 
   useEffect(() => {
     if (isOpen) {
@@ -80,7 +57,8 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   }, [isOpen]);
 
   const loadComments = useCallback(async (pageUrl?: string) => {
-    if (!feedItem) return;
+    const itemToUse = displayedItem || feedItem;
+    if (!itemToUse) return;
 
     setIsLoading(true);
     try {
@@ -89,10 +67,10 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
           ? pageUrl 
           : `${(apiClient as any).client.defaults.baseURL}${pageUrl}`;
         const response = await (apiClient as any).client.get(fullUrl);
-        setComments(prev => [...prev, ...response.data.results]);
+        setComments(prev => [...prev, ...response.data.results] as Comment[]);
         setNextPage(response.data.next);
       } else {
-        const response = await apiClient.getComments(feedItem.id, { page_size: 20 });
+        const response = await apiClient.getComments(itemToUse.id, { page_size: 20 });
         setComments(response.results);
         setNextPage(response.next);
       }
@@ -103,15 +81,14 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [feedItem]);
+  }, [displayedItem, feedItem]);
 
   useEffect(() => {
     if (isOpen && feedItem) {
-      if (currentItem?.id !== feedItem.id) {
-        // Item changed - reset transition state
-        setCurrentItem(feedItem);
-        // Don't reset y position here - let navigateToItem handle it
-        // This prevents double animation when item changes
+      // Initialize displayedItem on first open
+      if (!displayedItem || displayedItem.id !== feedItem.id) {
+        setDisplayedItem(feedItem);
+        scrollYRef.current = 0;
       }
       setKudosCount(feedItem.kudos_count);
       setHasKudoed(feedItem.has_user_kudoed);
@@ -134,9 +111,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
       setKudosCount(0);
       setHasKudoed(false);
       setShowComments(false);
-      setCurrentItem(null);
-      y.set(0);
-      setIsTransitioning(false);
+      setDisplayedItem(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, feedItem, showComments, loadComments]);
@@ -149,11 +124,12 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!feedItem || !newComment.trim() || isSubmitting) return;
+    const itemToUse = displayedItem || feedItem;
+    if (!itemToUse || !newComment.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     try {
-      const comment = await apiClient.createComment(feedItem.id, {
+      const comment = await apiClient.createComment(itemToUse.id, {
         text: newComment.trim(),
       });
       setComments(prev => [comment, ...prev] as Comment[]);
@@ -204,11 +180,12 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   };
 
   const handleToggleKudo = async () => {
-    if (!feedItem || isTogglingKudo) return;
+    const itemToUse = displayedItem || feedItem;
+    if (!itemToUse || isTogglingKudo) return;
     
     setIsTogglingKudo(true);
     try {
-      const response = await apiClient.toggleKudo(feedItem.id);
+      const response = await apiClient.toggleKudo(itemToUse.id);
       setHasKudoed(response.has_kudoed);
       setKudosCount(response.kudos_count);
     } catch (error) {
@@ -217,9 +194,6 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
       setIsTogglingKudo(false);
     }
   };
-
-  // Drag handlers
-  const minSwipeDistance = 40; // Minimum distance to trigger navigation (50-100px)
 
   // Auto-load more when reaching last item
   useEffect(() => {
@@ -234,83 +208,130 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     }
   }, [feedItem, allItems, hasMore, onLoadMore, isLoadingMore, showComments]);
 
-  const navigateToItem = async (direction: 'next' | 'prev') => {
-    if (!feedItem || allItems.length === 0 || isTransitioning) {
-      y.set(0);
-      return;
-    }
+  const scrollYRef = useRef(0);
+  const scrollTimeoutRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const touchYRef = useRef(0);
 
-    const currentIndex = allItems.findIndex(item => item.id === feedItem.id);
-    if (currentIndex === -1) {
-      y.set(0);
-      return;
+  // Handle wheel event for scroll detection (desktop)
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (showComments) return;
+    
+    e.preventDefault();
+    
+    if (!displayedItem || allItems.length === 0) return;
+    
+    const currentIndex = allItems.findIndex(item => item.id === displayedItem.id);
+    if (currentIndex === -1) return;
+    
+    // Accumulate scroll delta
+    scrollYRef.current += e.deltaY;
+    const threshold = 50; // pixels to trigger change
+    
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
     }
-
-    let newIndex: number;
-    if (direction === 'next') {
-      newIndex = currentIndex + 1;
-      
-      // If at last item and has more, load more
-      if (newIndex >= allItems.length) {
-        if (hasMore && onLoadMore && !isLoadingMore) {
-          await onLoadMore();
-          // After loading, try again with updated list
-          const updatedIndex = allItems.findIndex(item => item.id === feedItem.id);
-          if (updatedIndex !== -1 && updatedIndex + 1 < allItems.length) {
-            newIndex = updatedIndex + 1;
-          } else {
-            // Still at last item after loading - animate back
-            y.set(0);
-            return;
+    
+    // Debounce scroll handling
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (Math.abs(scrollYRef.current) >= threshold) {
+        if (scrollYRef.current < 0 && currentIndex > 0) {
+          // Scrolled up - show previous item
+          const prevItem = allItems[currentIndex - 1];
+          if (prevItem && displayedItem.id !== prevItem.id) {
+            setDisplayedItem(prevItem);
+            if (onItemChange) {
+              onItemChange(prevItem);
+            }
           }
-        } else {
-          // Already at last item and no more to load - animate back
-          y.set(0);
-          return;
+        } else if (scrollYRef.current > 0 && currentIndex < allItems.length - 1) {
+          // Scrolled down - show next item
+          const nextItem = allItems[currentIndex + 1];
+          if (nextItem && displayedItem.id !== nextItem.id) {
+            setDisplayedItem(nextItem);
+            if (onItemChange) {
+              onItemChange(nextItem);
+            }
+          }
+        }
+        scrollYRef.current = 0;
+      } else {
+        // Reset if threshold not met
+        scrollYRef.current = 0;
+      }
+    }, 100);
+  }, [displayedItem, allItems, showComments, onItemChange]);
+
+  // Handle touch events for mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (showComments) return;
+    
+    const touch = e.touches[0];
+    if (touch) {
+      touchStartYRef.current = touch.clientY;
+      touchYRef.current = 0;
+    }
+  }, [showComments]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (showComments || touchStartYRef.current === null) return;
+    
+    const touch = e.touches[0];
+    if (touch) {
+      const deltaY = touch.clientY - touchStartYRef.current;
+      touchYRef.current = deltaY;
+    }
+  }, [showComments]);
+
+  const handleTouchEnd = useCallback(() => {
+    if (showComments || touchStartYRef.current === null) {
+      touchStartYRef.current = null;
+      touchYRef.current = 0;
+      return;
+    }
+    
+    if (!displayedItem || allItems.length === 0) {
+      touchStartYRef.current = null;
+      touchYRef.current = 0;
+      return;
+    }
+    
+    const currentIndex = allItems.findIndex(item => item.id === displayedItem.id);
+    if (currentIndex === -1) {
+      touchStartYRef.current = null;
+      touchYRef.current = 0;
+      return;
+    }
+    
+    const threshold = 50; // pixels to trigger change
+    const deltaY = touchYRef.current;
+    
+    if (Math.abs(deltaY) >= threshold) {
+      if (deltaY > 0 && currentIndex > 0) {
+        // Swiped down - show previous item
+        const prevItem = allItems[currentIndex - 1];
+        if (prevItem && displayedItem.id !== prevItem.id) {
+          setDisplayedItem(prevItem);
+          if (onItemChange) {
+            onItemChange(prevItem);
+          }
+        }
+      } else if (deltaY < 0 && currentIndex < allItems.length - 1) {
+        // Swiped up - show next item
+        const nextItem = allItems[currentIndex + 1];
+        if (nextItem && displayedItem.id !== nextItem.id) {
+          setDisplayedItem(nextItem);
+          if (onItemChange) {
+            onItemChange(nextItem);
+          }
         }
       }
-    } else {
-      newIndex = currentIndex - 1;
-      if (newIndex < 0) {
-        // Already at first item - animate back
-        y.set(0);
-        return;
-      }
     }
-
-    const newItem = allItems[newIndex];
-    if (!newItem) {
-      y.set(0);
-      return;
-    }
-
-    setIsTransitioning(true);
-    setPendingItem(newItem); // Set pending item immediately
-    setShowComments(false);
-    setComments([]);
-    setNewComment('');
-    setEditingCommentId(null);
-    setEditingText('');
-    setNextPage(null);
-
-    const windowHeight = window.innerHeight;
-    const targetY = direction === 'next' ? -windowHeight : windowHeight;
     
-    // Animate to completion
-    y.set(targetY);
-
-    // Update item in parent only after animation completes
-    // This prevents showing wrong items during transition
-    setTimeout(() => {
-      if (onItemChange) {
-        onItemChange(newItem);
-      }
-      // Reset position and clear pending item
-      y.set(0);
-      setPendingItem(null);
-      setIsTransitioning(false);
-    }, 300);
-  };
+    touchStartYRef.current = null;
+    touchYRef.current = 0;
+  }, [displayedItem, allItems, showComments, onItemChange]);
 
   if (!isOpen || !feedItem) return null;
 
@@ -318,204 +339,45 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     return user && comment.user.id === user.id;
   };
 
-  // Get current, previous, and next items to render
-  // Use pendingItem during transition to prevent showing wrong items
-  const getItemsToRender = () => {
-    // During transition, use the item we're transitioning to
-    const itemToUse = isTransitioning && pendingItem ? pendingItem : feedItem;
+  const renderItem = (item: FeedItem) => {
+    if (!item || !item.file) return null;
     
-    if (!itemToUse || allItems.length === 0) {
-      return { prev: null, current: null, next: null };
-    }
+    const fileUrl = getImageUrl(item.file);
+    if (!fileUrl) return null;
     
-    const currentIndex = allItems.findIndex(item => item.id === itemToUse.id);
-    if (currentIndex === -1) {
-      return { prev: null, current: itemToUse, next: null };
-    }
+    const isVideo = item.type === 'video';
+    const isCurrent = displayedItem?.id === item.id;
     
-    const prev = currentIndex > 0 ? allItems[currentIndex - 1] : null;
-    const current = itemToUse;
-    const next = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
-    
-    return { prev, current, next };
-  };
-
-  const { prev: prevItem, current: currentItemToRender, next: nextItem } = getItemsToRender();
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (showComments) return;
-    e.preventDefault(); // Prevent default scroll behavior
-    const touch = e.touches[0];
-    if (touch) {
-      setTouchStart(touch.clientY);
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (showComments || touchStart === null) return;
-    e.preventDefault(); // Prevent default scroll behavior
-    const touch = e.touches[0];
-    if (touch) {
-      const deltaY = touch.clientY - touchStart;
-      // Update position in real-time based on finger position
-      y.set(deltaY);
-      
-      // Check if we should auto-navigate (but don't navigate while finger is still on screen)
-      // We'll handle navigation in touchEnd
-    }
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    e.preventDefault(); // Prevent default scroll behavior
-    
-    if (showComments) {
-      setTouchStart(null);
-      return;
-    }
-    
-    if (touchStart === null) {
-      return;
-    }
-    
-    // Get the final position from the last touch move
-    const touch = e.changedTouches[0];
-    if (!touch) {
-      setTouchStart(null);
-      y.set(0);
-      return;
-    }
-    
-    const finalDeltaY = touch.clientY - touchStart;
-    const shouldNavigate = Math.abs(finalDeltaY) >= minSwipeDistance;
-    
-    if (shouldNavigate && finalDeltaY < 0) {
-      // Swipe up - next item (user scrolled up, so show next item)
-      navigateToItem('next');
-    } else if (shouldNavigate && finalDeltaY > 0) {
-      // Swipe down - previous item (user scrolled down, so show previous item)
-      navigateToItem('prev');
-    } else {
-      // Not enough distance - return to original position with spring animation
-      y.set(0);
-    }
-    
-    setTouchStart(null);
-  };
-
-  return (
-    <div 
-      ref={containerRef}
-      className="fixed inset-0 z-[9999] bg-black overflow-hidden"
-      style={{ touchAction: 'none', userSelect: 'none' }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onMouseDown={(e) => e.preventDefault()} // Prevent mouse drag
-      onMouseMove={(e) => e.preventDefault()} // Prevent mouse drag
-    >
-      {/* Previous Background Image/Video (above current) */}
-      {prevItem && prevItem.file && (() => {
-        const prevFileUrl = getImageUrl(prevItem.file);
-        const prevIsVideo = prevItem.type === 'video';
-        if (!prevFileUrl) return null;
+    return (
+      <div
+        key={item.id}
+        className="fixed inset-0 flex items-center justify-center"
+        style={{
+          opacity: isCurrent ? 1 : 0,
+          transition: 'opacity 0.3s ease-in-out',
+          pointerEvents: isCurrent ? 'auto' : 'none',
+          zIndex: isCurrent ? 10 : 0
+        }}
+      >
+        {isVideo ? (
+          <video
+            src={fileUrl}
+            controls
+            loop
+            playsInline
+            className="max-w-full max-h-full w-auto h-auto object-contain"
+          />
+        ) : (
+          <img
+            src={fileUrl}
+            alt={item.description || 'Progress photo'}
+            className="max-w-full max-h-full w-auto h-auto object-contain"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
         
-        return (
-          <motion.div 
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ y: prevY }}
-            key={`prev-${prevItem.id}`}
-          >
-            {prevIsVideo ? (
-              <video
-                src={prevFileUrl}
-                controls
-                loop
-                playsInline
-                className="max-w-full max-h-full w-auto h-auto object-contain"
-              />
-            ) : (
-              <img
-                src={prevFileUrl}
-                alt={prevItem.description || 'Progress photo'}
-                className="max-w-full max-h-full w-auto h-auto object-contain"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-          </motion.div>
-        );
-      })()}
-
-      {/* Current Background Image/Video */}
-      {currentItemToRender && currentItemToRender.file && (() => {
-        const currentFileUrl = getImageUrl(currentItemToRender.file);
-        const currentIsVideo = currentItemToRender.type === 'video';
-        if (!currentFileUrl) return null;
-        
-        return (
-          <motion.div 
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ y: currentY }}
-            key={`current-${currentItemToRender.id}`}
-          >
-            {currentIsVideo ? (
-              <video
-                src={currentFileUrl}
-                controls
-                loop
-                playsInline
-                className="max-w-full max-h-full w-auto h-auto object-contain"
-              />
-            ) : (
-              <img
-                src={currentFileUrl}
-                alt={currentItemToRender.description || 'Progress photo'}
-                className="max-w-full max-h-full w-auto h-auto object-contain"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-          </motion.div>
-        );
-      })()}
-
-      {/* Next Background Image/Video (below current) */}
-      {nextItem && nextItem.file && (() => {
-        const nextFileUrl = getImageUrl(nextItem.file);
-        const nextIsVideo = nextItem.type === 'video';
-        if (!nextFileUrl) return null;
-        
-        return (
-          <motion.div 
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ y: nextY }}
-            key={`next-${nextItem.id}`}
-          >
-            {nextIsVideo ? (
-              <video
-                src={nextFileUrl}
-                controls
-                loop
-                playsInline
-                className="max-w-full max-h-full w-auto h-auto object-contain"
-              />
-            ) : (
-              <img
-                src={nextFileUrl}
-                alt={nextItem.description || 'Progress photo'}
-                className="max-w-full max-h-full w-auto h-auto object-contain"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-          </motion.div>
-        );
-      })()}
-
-      {/* Top Bar - only show for current item */}
-      {currentItemToRender && (
-        <motion.div 
-          className="absolute top-0 left-0 right-0 z-10 flex items-center p-4 pointer-events-auto"
-          style={{ y: currentY }}
-        >
-          {/* Back Button */}
+        {/* Top Bar */}
+        <div className="absolute top-0 left-0 right-0 z-10 flex items-center p-4 pointer-events-auto">
           <button
             onClick={onClose}
             className="bg-black/50 backdrop-blur-sm rounded-full p-2 text-white hover:bg-black/70 transition-colors touch-manipulation"
@@ -523,58 +385,53 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
           >
             <ArrowLeft className="w-6 h-6" />
           </button>
-        </motion.div>
-      )}
+        </div>
 
-      {/* Bottom Info - only show for current item */}
-      {currentItemToRender && (
-        <motion.div 
-          className="absolute bottom-0 left-0 right-0 z-10 p-4 pb-8 pointer-events-auto"
-          style={{ y: currentY }}
-        >
+        {/* Bottom Info */}
+        <div className="absolute bottom-0 left-0 right-0 z-10 p-4 pb-8 pointer-events-auto">
           <div className="flex items-end justify-between">
             {/* Left: User Info */}
             <div className="flex-1 min-w-0 pr-4">
               <div className="flex items-center space-x-3 mb-3">
                 <Link 
-                  to={`/users/${currentItemToRender.user.id}/profile`}
+                  to={`/users/${item.user.id}/profile`}
                   className="flex-shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Avatar
-                    src={currentItemToRender.user.profile?.avatar}
-                    firstName={currentItemToRender.user.first_name}
-                    lastName={currentItemToRender.user.last_name}
-                    username={currentItemToRender.user.username}
+                    src={item.user.profile?.avatar}
+                    firstName={item.user.first_name}
+                    lastName={item.user.last_name}
+                    username={item.user.username}
                     size="md"
                     className="border-2 border-white"
                   />
                 </Link>
                 <div className="flex-1 min-w-0">
                   <Link 
-                    to={`/users/${currentItemToRender.user.id}/profile`}
+                    to={`/users/${item.user.id}/profile`}
                     className="block hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="text-white font-semibold text-lg truncate">
-                      {currentItemToRender.user.first_name && currentItemToRender.user.last_name
-                        ? `${currentItemToRender.user.first_name} ${currentItemToRender.user.last_name}`
-                        : currentItemToRender.user.username}
+                      {item.user.first_name && item.user.last_name
+                        ? `${item.user.first_name} ${item.user.last_name}`
+                        : item.user.username}
                     </div>
                   </Link>
                   <div className="text-white/90 text-sm mt-1">
-                    {currentItemToRender.daily_progress_date 
-                      ? formatDate(currentItemToRender.daily_progress_date, 'dd.MM.yyyy')
-                      : formatDate(currentItemToRender.uploaded_at, 'dd.MM.yyyy')
-                    } • {currentItemToRender.activity_name} • {currentItemToRender.quantity}
+                    {item.daily_progress_date 
+                      ? formatDate(item.daily_progress_date, 'dd.MM.yyyy')
+                      : formatDate(item.uploaded_at, 'dd.MM.yyyy')
+                    } • {item.activity_name} • {item.quantity}
                   </div>
                 </div>
               </div>
 
               {/* Description */}
-              {currentItemToRender.description && (
+              {item.description && (
                 <p className="text-white text-sm mb-2 line-clamp-2">
-                  {currentItemToRender.description}
+                  {item.description}
                 </p>
               )}
             </div>
@@ -609,19 +466,59 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
                 >
                   <MessageCircle className="w-6 h-6" />
                 </button>
-                {currentItemToRender.comments_count > 0 && (
+                {item.comments_count > 0 && (
                   <span className="text-white text-xs mt-1 font-medium">
-                    {currentItemToRender.comments_count}
+                    {item.comments_count}
                   </span>
                 )}
               </div>
             </div>
           </div>
-        </motion.div>
-      )}
+        </div>
+      </div>
+    );
+  };
+
+  // Get items to render (current and adjacent)
+  const getItemsToRender = () => {
+    if (!displayedItem || allItems.length === 0) {
+      return [];
+    }
+    
+    const currentIndex = allItems.findIndex(item => item.id === displayedItem.id);
+    if (currentIndex === -1) {
+      return [displayedItem];
+    }
+    
+    const items: FeedItem[] = [];
+    if (currentIndex > 0) {
+      items.push(allItems[currentIndex - 1]);
+    }
+    items.push(displayedItem);
+    if (currentIndex < allItems.length - 1) {
+      items.push(allItems[currentIndex + 1]);
+    }
+    
+    return items;
+  };
+
+  const itemsToRender = getItemsToRender();
+
+  return (
+    <div 
+      ref={containerRef}
+      className="fixed inset-0 z-[9999] bg-black overflow-hidden"
+      onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      style={{ touchAction: 'none' }}
+    >
+      {/* Render items with opacity transition */}
+      {itemsToRender.map(item => renderItem(item))}
 
       {/* Comments Panel */}
-      {showComments && (
+      {showComments && displayedItem && (
         <div className="absolute bottom-0 left-0 right-0 z-20 bg-white rounded-t-3xl max-h-[70vh] flex flex-col">
           {/* Comments Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
