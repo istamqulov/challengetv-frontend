@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Trophy, LogOut, TrendingUp, Award, Zap } from 'lucide-react';
+import { Trophy, LogOut, TrendingUp, Award, Zap, Tv } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/stores/authStore';
@@ -65,6 +65,15 @@ export const TopBar: React.FC = () => {
               
               {isAuthenticated && (
                 <>
+                  {/* Explore button - icon only */}
+                  <Link
+                    to="/explore"
+                    className="p-2 text-gray-600 hover:text-primary-600 transition-colors"
+                    title="Обзор"
+                  >
+                    <Tv className="w-5 h-5" />
+                  </Link>
+                  
                   {/* Top button - icon only */}
                   <Link
                     to="/top"

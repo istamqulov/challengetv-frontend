@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Send, Trash2, Edit2, X } from 'lucide-react';
+import { Send, Trash2, Edit2, X, Play } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { apiClient } from '@/lib/api';
-import { formatDateTime } from '@/lib/utils';
+import { formatDateTime, getImageUrl } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import type { Comment, FeedItem } from '@/types/api';
 
@@ -133,6 +133,9 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
     return user && comment.user.id === user.id;
   };
 
+  const fileUrl = feedItem.file ? getImageUrl(feedItem.file) : null;
+  const isVideo = feedItem.type === 'video';
+
   return (
     <Modal
       isOpen={isOpen}
@@ -173,6 +176,30 @@ export const DiscussionModal: React.FC<DiscussionModalProps> = ({
             <p className="text-sm text-gray-700 mt-2">{feedItem.description}</p>
           )}
         </div>
+
+        {/* File (Image or Video) */}
+        {fileUrl && (
+          <div className="relative rounded-lg overflow-hidden bg-gray-100">
+            {isVideo ? (
+              <div className="relative">
+                <video
+                  src={fileUrl}
+                  controls
+                  className="w-full max-h-96 object-contain"
+                />
+                <div className="absolute top-2 right-2 bg-black/50 rounded-full p-2">
+                  <Play className="w-4 h-4 text-white" />
+                </div>
+              </div>
+            ) : (
+              <img
+                src={fileUrl}
+                alt={feedItem.description || 'Progress photo'}
+                className="w-full max-h-96 object-contain"
+              />
+            )}
+          </div>
+        )}
 
         {/* Comments List */}
         <div className="space-y-4 max-h-96 overflow-y-auto">

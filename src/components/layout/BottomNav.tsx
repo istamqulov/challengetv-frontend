@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Trophy, Plus, User, LogIn, Compass, BarChart3 } from 'lucide-react';
+import { Trophy, Plus, User, LogIn, Tv, BarChart3 } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { isChallengeActive, cn } from '@/lib/utils';
 import { apiClient } from '@/lib/api';
@@ -124,12 +124,12 @@ export const BottomNav: React.FC = () => {
       <div className="relative flex items-center justify-around h-16 px-2">
         {/* Обзор (Explore) */}
         <Link
-          to="/"
+          to="/explore"
           className={`flex flex-col items-center justify-center flex-1 transition-colors ${
-            isActive('/') && location.pathname === '/' ? 'text-primary-600' : 'text-gray-600'
+            isActive('/explore') ? 'text-primary-600' : 'text-gray-600'
           }`}
         >
-          <Compass className="w-5 h-5" />
+          <Tv className="w-5 h-5" />
           <span className="text-xs mt-1">Обзор</span>
         </Link>
 
