@@ -117,7 +117,7 @@ export const GalleryView: React.FC = () => {
         ) : (
           <>
             {/* Masonry Gallery Layout */}
-            <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
+            <div className="columns-2 sm:columns-3 md:columns-3 lg:columns-4 gap-4">
               {feedItems.map((item) => (
                 <GalleryItem
                   key={item.id}
