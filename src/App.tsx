@@ -18,15 +18,25 @@ import { SendProgressPage } from '@/pages/SendProgressPage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 import { initNotificationService } from '@/lib/notificationService';
+import { FestiveDecorations } from '@/components/ui/FestiveDecorations';
 
 // Layout Component
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-50">
-      <TopBar />
-      <MobileHeader />
-      <main className="pt-14 pb-20 md:pt-0 md:pb-0">{children}</main>
-      <BottomNav />
+    <div className="min-h-screen bg-gray-50 relative overflow-hidden">
+      {/* Subtle festive background pattern */}
+      <div className="fixed inset-0 opacity-5 pointer-events-none z-0" style={{
+        backgroundImage: `radial-gradient(circle at 20% 50%, rgba(220, 38, 38, 0.1) 0%, transparent 50%),
+                          radial-gradient(circle at 80% 50%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+                          radial-gradient(circle at 50% 20%, rgba(251, 191, 36, 0.1) 0%, transparent 50%)`,
+      }}></div>
+      <FestiveDecorations />
+      <div className="relative z-10">
+        <TopBar />
+        <MobileHeader />
+        <main className="pt-14 pb-20 md:pt-0 md:pb-0">{children}</main>
+        <BottomNav />
+      </div>
     </div>
   );
 };
@@ -46,14 +56,17 @@ function App() {
     }, []); // Empty dependency array - run only once
 
     // Verify token after initialization (only when tokens change)
+    // Also verify if we have tokens but isAuthenticated is false (recovery case)
     useEffect(() => {
-      if (tokens?.access && isAuthenticated) {
-        console.log('Verifying token...');
+      if (tokens?.access) {
+        // Always verify token if we have one, regardless of isAuthenticated state
+        // This helps recover from cases where auth state was lost but tokens are still valid
+        console.log('Verifying token...', { isAuthenticated, hasToken: !!tokens?.access });
         verifyToken().catch((error) => {
           console.warn('Token verification failed:', error);
         });
       }
-    }, [tokens?.access, isAuthenticated]); // Only depend on access token and auth status
+    }, [tokens?.access]); // Only depend on access token - verify whenever token changes
 
     // Initialize notification service for authenticated users
     useEffect(() => {

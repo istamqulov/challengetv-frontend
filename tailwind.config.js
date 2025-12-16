@@ -19,6 +19,12 @@ export default {
           800: '#075985',
           900: '#0c4a6e',
         },
+        festive: {
+          red: '#dc2626',
+          green: '#22c55e',
+          gold: '#fbbf24',
+          silver: '#94a3b8',
+        },
       },
       keyframes: {
         'fade-in': {
@@ -48,6 +54,8 @@ export default {
         'slide-in-from-bottom-2': 'slide-in-from-bottom 0.3s ease-out',
         'zoom-in': 'zoom-in 0.3s ease-out',
         'bounce-subtle': 'bounce-subtle 1s ease-in-out infinite',
+        'festive-glow': 'festive-glow 2s ease-in-out infinite',
+        'twinkle': 'twinkle 1.5s ease-in-out infinite',
       },
     },
   },

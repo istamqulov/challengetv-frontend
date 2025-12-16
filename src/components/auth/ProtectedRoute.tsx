@@ -8,18 +8,18 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading, isInitialized, verifyToken, tokens } = useAuthStore();
+  const { isAuthenticated, isLoading, isInitialized, verifyToken, tokens, isVerifying, isRefreshing } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
-    // Verify token on mount if we have tokens
-    if (tokens?.access && !isAuthenticated) {
+    // Verify token on mount if we have tokens but not authenticated (recovery case)
+    if (tokens?.access && !isAuthenticated && !isVerifying && !isRefreshing) {
       verifyToken();
     }
-  }, [tokens, isAuthenticated, verifyToken]);
+  }, [tokens?.access, isAuthenticated, verifyToken, isVerifying, isRefreshing]);
 
-  // Show loading while auth is initializing or during other loading states
-  if (!isInitialized || isLoading) {
+  // Show loading while auth is initializing, verifying, refreshing, or during other loading states
+  if (!isInitialized || isLoading || isVerifying || isRefreshing) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loading />

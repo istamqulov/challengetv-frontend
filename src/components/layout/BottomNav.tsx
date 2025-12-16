@@ -78,7 +78,9 @@ export const BottomNav: React.FC = () => {
   if (!isAuthenticated) {
     // Show minimal navigation for non-authenticated users
     return (
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-[100] will-change-transform" style={{ position: 'fixed', transform: 'translateZ(0)' }}>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-[100] will-change-transform relative overflow-hidden" style={{ position: 'fixed', transform: 'translateZ(0)' }}>
+        {/* Festive top border */}
+        <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-festive-red via-festive-gold via-festive-green to-festive-red"></div>
         <div className="flex items-center justify-around h-16 px-4">
           <Link
             to="/"
@@ -116,7 +118,9 @@ export const BottomNav: React.FC = () => {
 
   // For authenticated users - show full navigation with FAB
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-[100] will-change-transform" style={{ position: 'fixed', transform: 'translateZ(0)' }}>
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg md:hidden z-[100] will-change-transform relative overflow-visible" style={{ position: 'fixed', transform: 'translateZ(0)' }}>
+      {/* Festive top border */}
+      <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-festive-red via-festive-gold via-festive-green to-festive-red overflow-hidden"></div>
       <div className="relative flex items-center justify-around h-16 px-2">
         {/* Обзор (Explore) */}
         <Link
@@ -141,15 +145,16 @@ export const BottomNav: React.FC = () => {
         </button>
 
         {/* Send Progress FAB (Floating Action Button) */}
-        <div className="flex-1 flex justify-center">
+        <div className="flex-1 flex justify-center relative">
           <button
             onClick={handleSendReport}
             className={cn(
-              "absolute -top-6 rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95",
+              "absolute rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105 active:scale-95 z-10",
               isActive('/send-progress')
-                ? 'bg-gradient-to-br from-primary-600 to-primary-700 text-white ring-4 ring-primary-200'
-                : 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
+                ? 'bg-gradient-to-br from-festive-red via-festive-gold to-festive-green text-white ring-4 ring-festive-gold/30 animate-festive-glow'
+                : 'bg-gradient-to-br from-festive-red via-festive-gold to-festive-green text-white hover:ring-2 hover:ring-festive-gold/50'
             )}
+            style={{ top: '-50px' }}
           >
             <Plus className="w-7 h-7" />
           </button>

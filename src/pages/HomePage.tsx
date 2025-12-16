@@ -315,17 +315,25 @@ export const HomePage: React.FC = () => {
 
       {/* Non-authenticated User Home Page */}
       {!isAuthenticated && (
-        <section className="bg-gradient-to-br from-primary-600 to-primary-700 text-white py-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <section className="bg-gradient-to-br from-primary-600 via-festive-red to-primary-700 text-white py-12 relative overflow-hidden">
+          {/* Festive background decorations */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-10 left-10 text-6xl animate-twinkle">🎄</div>
+            <div className="absolute top-20 right-20 text-5xl animate-twinkle" style={{ animationDelay: '0.5s' }}>⭐</div>
+            <div className="absolute bottom-20 left-20 text-4xl animate-twinkle" style={{ animationDelay: '1s' }}>❄️</div>
+            <div className="absolute bottom-10 right-10 text-5xl animate-twinkle" style={{ animationDelay: '1.5s' }}>🎁</div>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
             <div className="text-center">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 flex items-center justify-center gap-2">
                 ChallengeTV
+                <span className="text-3xl animate-twinkle">🎉</span>
               </h1>
               <p className="text-lg md:text-xl mb-6 text-white/90">
                 Участвуйте в челленджах и достигайте целей
               </p>
               <Link to="/challenges">
-                <Button size="lg" variant="secondary" className="shadow-lg">
+                <Button size="lg" variant="secondary" className="shadow-lg hover:shadow-festive-gold/50 transition-all duration-300 border-2 border-festive-gold/30 hover:border-festive-gold">
                   Смотреть челленджи
                 </Button>
               </Link>

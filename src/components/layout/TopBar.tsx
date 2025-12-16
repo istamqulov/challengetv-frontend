@@ -35,14 +35,17 @@ export const TopBar: React.FC = () => {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="bg-white shadow-sm border-b border-gray-200 relative overflow-hidden">
+      {/* Festive border gradient */}
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-festive-red via-festive-gold via-festive-green to-festive-red animate-festive-glow"></div>
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <Trophy className="w-8 h-8 text-primary-600" />
+          <Link to="/" className="flex items-center space-x-2 group">
+            <Trophy className="w-8 h-8 text-primary-600 group-hover:text-festive-gold transition-colors duration-300" />
             <span className="text-2xl font-bold text-gray-900">
-              Challenge<span className="text-primary-600">TV</span>
+              Challenge<span className="text-primary-600 group-hover:text-festive-red transition-colors duration-300">TV</span>
+              <span className="ml-1 text-lg animate-twinkle">🎄</span>
             </span>
           </Link>
 

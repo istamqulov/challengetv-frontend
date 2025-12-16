@@ -10,6 +10,7 @@ interface AuthState {
   isInitialized: boolean; // Flag to track if auth has been initialized from storage
   error: string | null;
   isRefreshing: boolean; // Add flag to prevent infinite refresh loops
+  isVerifying: boolean; // Flag to track if token verification is in progress
   lastVerifiedToken: string | null; // Track last verified token to prevent re-verification
   expiresAt: number | null; // Unix ms timestamp when refresh lifetime ends
 }
@@ -72,6 +73,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   isInitialized: false,
   error: null,
   isRefreshing: false,
+  isVerifying: false,
   lastVerifiedToken: null,
   expiresAt: null,
 
@@ -94,10 +96,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         return;
       }
 
+      // If we have tokens, we should be authenticated
+      const shouldBeAuthenticated = !!(stored.tokens?.access);
+      
       set({
         user: stored.user || null,
         tokens: stored.tokens || null,
-        isAuthenticated: stored.isAuthenticated || false,
+        isAuthenticated: shouldBeAuthenticated || stored.isAuthenticated || false,
         isInitialized: true,
         expiresAt: stored.expiresAt || null,
       });
@@ -107,12 +112,25 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         apiClient.setAuthToken(stored.tokens.access);
         console.log('Auth token set from storage');
         
+        // Update localStorage to ensure isAuthenticated is set if we have tokens
+        if (shouldBeAuthenticated) {
+          saveAuthToStorage({
+            user: stored.user || null,
+            tokens: stored.tokens,
+            isAuthenticated: true,
+            expiresAt: stored.expiresAt,
+          });
+        }
+        
         // Only fetch fresh user data if we don't have user data or if it's stale
         if (!stored.user) {
           apiClient.getCurrentUser()
             .then((userData) => {
               console.log('Fetched fresh user data:', userData);
-              set({ user: userData });
+              set({ 
+                user: userData,
+                isAuthenticated: true, // Ensure authenticated state
+              });
               // Update localStorage with fresh user data
               saveAuthToStorage({
                 user: userData,
@@ -122,7 +140,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
               });
             })
             .catch((error) => {
+              // Don't reset auth state on error - token might still be valid
+              // Only log the error
               console.warn('Failed to fetch user data:', error);
+              // Keep the current auth state with tokens
             });
         }
       }
@@ -230,6 +251,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const { tokens, isRefreshing } = get();
     if (!tokens?.refresh || isRefreshing) {
       if (!tokens?.refresh) {
+        // No refresh token available, logout
         get().logout();
       }
       return;
@@ -244,6 +266,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         tokens: newTokens,
         error: null,
         isRefreshing: false,
+        isAuthenticated: true, // Ensure authenticated state after refresh
+        lastVerifiedToken: null, // Reset to allow verification of new token
       });
 
       // Update localStorage
@@ -251,17 +275,29 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       saveAuthToStorage({
         user: currentState.user,
         tokens: newTokens,
-        isAuthenticated: currentState.isAuthenticated,
+        isAuthenticated: true,
         expiresAt: currentState.expiresAt || null,
       });
 
       // Update auth token for future requests
       apiClient.setAuthToken(newTokens.access);
-    } catch (error) {
-      // If refresh fails, logout user
-      console.warn('Token refresh failed:', error);
+    } catch (error: any) {
+      // Only logout on authentication errors (401, 403), not on network errors
+      const status = error?.response?.status;
+      const isAuthError = status === 401 || status === 403;
+      
       set({ isRefreshing: false });
-      get().logout();
+      
+      if (isAuthError) {
+        // Refresh token is invalid or expired, logout
+        console.warn('Token refresh failed with auth error:', error);
+        get().logout();
+      } else {
+        // Network error or other error - don't logout, just log
+        // The old token might still be valid
+        console.warn('Token refresh failed due to network error:', error);
+        // Keep the current auth state
+      }
     }
   },
 
@@ -276,12 +312,44 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const response = await apiClient.verifyToken(tokens.access);
       if (!response.valid && !isRefreshing) {
+        // Token is invalid, try to refresh
         await get().refreshTokens();
       } else {
-        set({ lastVerifiedToken: tokens.access });
+        // Token is valid, update state
+        set({ 
+          lastVerifiedToken: tokens.access,
+          isAuthenticated: true, // Ensure authenticated state is set
+        });
+        // Update localStorage to ensure isAuthenticated is persisted
+        const currentState = get();
+        saveAuthToStorage({
+          user: currentState.user,
+          tokens: currentState.tokens,
+          isAuthenticated: true,
+          expiresAt: currentState.expiresAt,
+        });
       }
-    } catch (error) {
-      get().logout();
+    } catch (error: any) {
+      // Only logout on authentication errors (401, 403), not on network errors
+      const status = error?.response?.status;
+      const isAuthError = status === 401 || status === 403;
+      
+      if (isAuthError) {
+        // Real authentication error - token is invalid
+        // Try to refresh first before logging out
+        try {
+          await get().refreshTokens();
+        } catch (refreshError) {
+          // Refresh failed, now we can logout
+          console.warn('Token verification and refresh failed, logging out');
+          get().logout();
+        }
+      } else {
+        // Network error or other error - don't logout, just log the error
+        // Token might still be valid, we just couldn't verify it
+        console.warn('Token verification failed due to network error:', error);
+        // Keep the current auth state, don't change anything
+      }
     } finally {
       set({ isVerifying: false });
     }
