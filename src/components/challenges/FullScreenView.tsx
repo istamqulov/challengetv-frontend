@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageCircle, Send, Trash2, Edit2 } from 'lucide-react';
-import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { apiClient } from '@/lib/api';
@@ -45,24 +45,24 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   const [currentItem, setCurrentItem] = useState<FeedItem | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [pendingItem, setPendingItem] = useState<FeedItem | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Initialize motion values only when component is mounted
   // These must be called before any conditional returns
   const y = useMotionValue(0);
-  const springConfig = { damping: 30, stiffness: 300 };
-  const ySpring = useSpring(y, springConfig);
   
   // Get window height safely (must be before conditional return)
   const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
   
   // Transform values for current and next/prev items (must be before conditional return)
-  const currentY = useTransform(ySpring, (value) => value || 0);
-  const nextY = useTransform(ySpring, (value) => {
+  // Use y directly without spring to avoid double animations
+  const currentY = useTransform(y, (value) => value || 0);
+  const nextY = useTransform(y, (value) => {
     const val = value || 0;
     return val < 0 ? windowHeight + val : windowHeight;
   });
-  const prevY = useTransform(ySpring, (value) => {
+  const prevY = useTransform(y, (value) => {
     const val = value || 0;
     return val > 0 ? -windowHeight + val : -windowHeight;
   });
@@ -285,6 +285,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     }
 
     setIsTransitioning(true);
+    setPendingItem(newItem); // Set pending item immediately
     setShowComments(false);
     setComments([]);
     setNewComment('');
@@ -298,21 +299,17 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     // Animate to completion
     y.set(targetY);
 
-    // Update item in the middle of animation to prevent double animation
+    // Update item in parent only after animation completes
+    // This prevents showing wrong items during transition
     setTimeout(() => {
       if (onItemChange) {
         onItemChange(newItem);
       }
-    }, 200);
-
-    // Reset position after animation completes
-    setTimeout(() => {
-      // Use requestAnimationFrame to ensure smooth transition
-      requestAnimationFrame(() => {
-        y.set(0);
-        setIsTransitioning(false);
-      });
-    }, 400);
+      // Reset position and clear pending item
+      y.set(0);
+      setPendingItem(null);
+      setIsTransitioning(false);
+    }, 300);
   };
 
   if (!isOpen || !feedItem) return null;
@@ -322,18 +319,22 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   };
 
   // Get current, previous, and next items to render
+  // Use pendingItem during transition to prevent showing wrong items
   const getItemsToRender = () => {
-    if (!feedItem || allItems.length === 0) {
+    // During transition, use the item we're transitioning to
+    const itemToUse = isTransitioning && pendingItem ? pendingItem : feedItem;
+    
+    if (!itemToUse || allItems.length === 0) {
       return { prev: null, current: null, next: null };
     }
     
-    const currentIndex = allItems.findIndex(item => item.id === feedItem.id);
+    const currentIndex = allItems.findIndex(item => item.id === itemToUse.id);
     if (currentIndex === -1) {
-      return { prev: null, current: feedItem, next: null };
+      return { prev: null, current: itemToUse, next: null };
     }
     
     const prev = currentIndex > 0 ? allItems[currentIndex - 1] : null;
-    const current = feedItem;
+    const current = itemToUse;
     const next = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
     
     return { prev, current, next };
