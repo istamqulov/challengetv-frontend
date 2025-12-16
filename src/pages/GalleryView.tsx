@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { GalleryItem } from '@/components/challenges/GalleryItem';
-import { DiscussionModal } from '@/components/challenges/DiscussionModal';
+import { FullScreenView } from '@/components/challenges/FullScreenView';
 import { useAuthStore } from '@/stores/authStore';
 import { apiClient } from '@/lib/api';
 import type { FeedItem as FeedItemType } from '@/types/api';
@@ -10,7 +10,7 @@ export const GalleryView: React.FC = () => {
   const [feedItems, setFeedItems] = useState<FeedItemType[]>([]);
   const [isLoadingFeed, setIsLoadingFeed] = useState(false);
   const [feedNextPage, setFeedNextPage] = useState<string | null>(null);
-  const [discussionModalOpen, setDiscussionModalOpen] = useState(false);
+  const [fullScreenOpen, setFullScreenOpen] = useState(false);
   const [selectedFeedItem, setSelectedFeedItem] = useState<FeedItemType | null>(null);
   const observerTarget = useRef<HTMLDivElement>(null);
 
@@ -88,7 +88,11 @@ export const GalleryView: React.FC = () => {
 
   const handleItemClick = (item: FeedItemType) => {
     setSelectedFeedItem(item);
-    setDiscussionModalOpen(true);
+    setFullScreenOpen(true);
+  };
+
+  const handleItemChange = (item: FeedItemType) => {
+    setSelectedFeedItem(item);
   };
 
   if (!isAuthenticated) {
@@ -143,14 +147,16 @@ export const GalleryView: React.FC = () => {
         )}
       </div>
 
-      {/* Discussion Modal */}
-      <DiscussionModal
-        isOpen={discussionModalOpen}
+      {/* Full Screen View */}
+      <FullScreenView
+        isOpen={fullScreenOpen}
         onClose={() => {
-          setDiscussionModalOpen(false);
+          setFullScreenOpen(false);
           setSelectedFeedItem(null);
         }}
         feedItem={selectedFeedItem}
+        allItems={feedItems}
+        onItemChange={handleItemChange}
       />
     </div>
   );
