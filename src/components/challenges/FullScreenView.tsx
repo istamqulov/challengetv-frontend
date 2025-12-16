@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Heart, MessageCircle, Send, Trash2, Edit2 } from 'lucide-react';
+import { motion, useMotionValue, useTransform, useSpring, PanInfo } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { Avatar } from '@/components/ui/Avatar';
 import { apiClient } from '@/lib/api';
@@ -41,11 +42,32 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   const [hasKudoed, setHasKudoed] = useState<boolean>(false);
   const [isTogglingKudo, setIsTogglingKudo] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [slideDirection, setSlideDirection] = useState<'up' | 'down' | null>(null);
   const [currentItem, setCurrentItem] = useState<FeedItem | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragY, setDragY] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Initialize motion values only when component is mounted
+  // These must be called before any conditional returns
+  const y = useMotionValue(0);
+  const springConfig = { damping: 30, stiffness: 300 };
+  const ySpring = useSpring(y, springConfig);
+  
+  // Get window height safely (must be before conditional return)
+  const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+  
+  // Transform values for current and next/prev items (must be before conditional return)
+  const currentY = useTransform(ySpring, (value) => value || 0);
+  const nextY = useTransform(ySpring, (value) => {
+    const val = value || 0;
+    return val < 0 ? windowHeight + val : windowHeight;
+  });
+  const prevY = useTransform(ySpring, (value) => {
+    const val = value || 0;
+    return val > 0 ? -windowHeight + val : -windowHeight;
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -59,46 +81,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    if (isOpen && feedItem) {
-      if (currentItem?.id !== feedItem.id) {
-        // Item changed - reset transition state
-        setCurrentItem(feedItem);
-        setSlideDirection(null);
-      }
-      setKudosCount(feedItem.kudos_count);
-      setHasKudoed(feedItem.has_user_kudoed);
-      if (showComments) {
-        loadComments();
-      } else {
-        // Reset comments when item changes and comments panel is closed
-        setComments([]);
-        setNewComment('');
-        setEditingCommentId(null);
-        setEditingText('');
-        setNextPage(null);
-      }
-    } else {
-      setComments([]);
-      setNewComment('');
-      setEditingCommentId(null);
-      setEditingText('');
-      setNextPage(null);
-      setKudosCount(0);
-      setHasKudoed(false);
-      setShowComments(false);
-      setCurrentItem(null);
-      setSlideDirection(null);
-    }
-  }, [isOpen, feedItem]);
-
-  useEffect(() => {
-    if (isOpen && feedItem && showComments) {
-      loadComments();
-    }
-  }, [showComments]);
-
-  const loadComments = async (pageUrl?: string) => {
+  const loadComments = useCallback(async (pageUrl?: string) => {
     if (!feedItem) return;
 
     setIsLoading(true);
@@ -122,7 +105,48 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [feedItem]);
+
+  useEffect(() => {
+    if (isOpen && feedItem) {
+      if (currentItem?.id !== feedItem.id) {
+        // Item changed - reset transition state
+        setCurrentItem(feedItem);
+        // Reset y position when item changes
+        y.set(0);
+      }
+      setKudosCount(feedItem.kudos_count);
+      setHasKudoed(feedItem.has_user_kudoed);
+      if (showComments) {
+        loadComments();
+      } else {
+        // Reset comments when item changes and comments panel is closed
+        setComments([]);
+        setNewComment('');
+        setEditingCommentId(null);
+        setEditingText('');
+        setNextPage(null);
+      }
+    } else {
+      setComments([]);
+      setNewComment('');
+      setEditingCommentId(null);
+      setEditingText('');
+      setNextPage(null);
+      setKudosCount(0);
+      setHasKudoed(false);
+      setShowComments(false);
+      setCurrentItem(null);
+      y.set(0);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, feedItem, showComments, loadComments]);
+
+  useEffect(() => {
+    if (isOpen && feedItem && showComments) {
+      loadComments();
+    }
+  }, [showComments, isOpen, feedItem, loadComments]);
 
   const handleSubmitComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -195,41 +219,33 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     }
   };
 
-  // Swipe handlers
-  const minSwipeDistance = 50;
+  // Drag handlers
+  const minSwipeDistance = 40; // Minimum distance to trigger navigation (50-100px)
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    if (showComments) return; // Don't handle swipe when comments panel is open
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientY);
-  };
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    if (showComments) return;
-    setTouchEnd(e.targetTouches[0].clientY);
-  };
-
-  const onTouchEnd = () => {
-    if (showComments || !touchStart || !touchEnd || !feedItem || allItems.length === 0 || isTransitioning) return;
-    
-    const distance = touchStart - touchEnd;
-    const isUpSwipe = distance > minSwipeDistance;
-    const isDownSwipe = distance < -minSwipeDistance;
-
-    if (isUpSwipe) {
-      // Swipe up - next item
-      navigateToItem('next');
-    } else if (isDownSwipe) {
-      // Swipe down - previous item
-      navigateToItem('prev');
-    }
-  };
-
-  const navigateToItem = async (direction: 'next' | 'prev') => {
-    if (!feedItem || allItems.length === 0 || isTransitioning) return;
+  // Auto-load more when reaching last item
+  useEffect(() => {
+    if (!feedItem || !allItems.length || showComments) return;
 
     const currentIndex = allItems.findIndex(item => item.id === feedItem.id);
-    if (currentIndex === -1) return;
+    const isLastItem = currentIndex === allItems.length - 1;
+
+    if (isLastItem && hasMore && onLoadMore && !isLoadingMore) {
+      // Load more items when user is at the last item
+      onLoadMore();
+    }
+  }, [feedItem, allItems, hasMore, onLoadMore, isLoadingMore, showComments]);
+
+  const navigateToItem = async (direction: 'next' | 'prev') => {
+    if (!feedItem || allItems.length === 0 || isTransitioning) {
+      y.set(0);
+      return;
+    }
+
+    const currentIndex = allItems.findIndex(item => item.id === feedItem.id);
+    if (currentIndex === -1) {
+      y.set(0);
+      return;
+    }
 
     let newIndex: number;
     if (direction === 'next') {
@@ -244,22 +260,32 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
           if (updatedIndex !== -1 && updatedIndex + 1 < allItems.length) {
             newIndex = updatedIndex + 1;
           } else {
-            return; // Still at last item after loading
+            // Still at last item after loading - animate back
+            y.set(0);
+            return;
           }
         } else {
-          return; // Already at last item and no more to load
+          // Already at last item and no more to load - animate back
+          y.set(0);
+          return;
         }
       }
     } else {
       newIndex = currentIndex - 1;
-      if (newIndex < 0) return; // Already at first item
+      if (newIndex < 0) {
+        // Already at first item - animate back
+        y.set(0);
+        return;
+      }
     }
 
     const newItem = allItems[newIndex];
-    if (!newItem) return;
+    if (!newItem) {
+      y.set(0);
+      return;
+    }
 
     setIsTransitioning(true);
-    setSlideDirection(direction === 'next' ? 'up' : 'down');
     setShowComments(false);
     setComments([]);
     setNewComment('');
@@ -267,119 +293,199 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     setEditingText('');
     setNextPage(null);
 
-    // Update item with callback
-    if (onItemChange) {
-      onItemChange(newItem);
-    }
+    // Get current position and animate to completion
+    const currentY = y.get();
+    const windowHeight = window.innerHeight;
+    
+    // Continue animation from current position to full screen
+    const targetY = direction === 'next' ? -windowHeight : windowHeight;
+    
+    // Animate smoothly to target
+    y.set(targetY);
 
-    // Reset transition after animation
+    // Update item after animation completes
     setTimeout(() => {
+      if (onItemChange) {
+        onItemChange(newItem);
+      }
+      // Reset position for new item
+      y.set(0);
       setIsTransitioning(false);
-      setSlideDirection(null);
     }, 400);
   };
 
   if (!isOpen || !feedItem) return null;
 
-  const fileUrl = feedItem.file ? getImageUrl(feedItem.file) : null;
-  const isVideo = feedItem.type === 'video';
-  const userName = feedItem.user.first_name && feedItem.user.last_name
-    ? `${feedItem.user.first_name} ${feedItem.user.last_name}`
-    : feedItem.user.username;
   const isOwnComment = (comment: Comment) => {
     return user && comment.user.id === user.id;
   };
 
-  // Calculate transform for slide animation
-  const getSlideTransform = () => {
-    if (!isTransitioning || !slideDirection) return 'translateY(0)';
-    if (slideDirection === 'up') {
-      return 'translateY(-100%)';
-    } else {
-      return 'translateY(100%)';
+  // Get current, previous, and next items to render
+  const getItemsToRender = () => {
+    if (!feedItem || allItems.length === 0) {
+      return { prev: null, current: null, next: null };
+    }
+    
+    const currentIndex = allItems.findIndex(item => item.id === feedItem.id);
+    if (currentIndex === -1) {
+      return { prev: null, current: feedItem, next: null };
+    }
+    
+    const prev = currentIndex > 0 ? allItems[currentIndex - 1] : null;
+    const current = feedItem;
+    const next = currentIndex < allItems.length - 1 ? allItems[currentIndex + 1] : null;
+    
+    return { prev, current, next };
+  };
+
+  const { prev: prevItem, current: currentItemToRender, next: nextItem } = getItemsToRender();
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (showComments) return;
+    e.preventDefault(); // Prevent default scroll behavior
+    const touch = e.touches[0];
+    if (touch) {
+      setTouchStart(touch.clientY);
     }
   };
 
-  const getNextSlideTransform = () => {
-    if (!isTransitioning || !slideDirection) {
-      // Hide next element when not transitioning
-      if (slideDirection === 'up') {
-        return 'translateY(100%)';
-      } else {
-        return 'translateY(-100%)';
-      }
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (showComments || touchStart === null) return;
+    e.preventDefault(); // Prevent default scroll behavior
+    const touch = e.touches[0];
+    if (touch) {
+      const deltaY = touch.clientY - touchStart;
+      // Update position in real-time based on finger position
+      y.set(deltaY);
+      
+      // Check if we should auto-navigate (but don't navigate while finger is still on screen)
+      // We'll handle navigation in touchEnd
     }
-    if (slideDirection === 'up') {
-      // Next item slides up from bottom
-      return 'translateY(0)';
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    e.preventDefault(); // Prevent default scroll behavior
+    
+    if (showComments) {
+      setTouchStart(null);
+      return;
+    }
+    
+    if (touchStart === null) {
+      return;
+    }
+    
+    // Get the final position from the last touch move
+    const touch = e.changedTouches[0];
+    if (!touch) {
+      setTouchStart(null);
+      y.set(0);
+      return;
+    }
+    
+    const finalDeltaY = touch.clientY - touchStart;
+    const shouldNavigate = Math.abs(finalDeltaY) >= minSwipeDistance;
+    
+    if (shouldNavigate && finalDeltaY < 0) {
+      // Swipe up - next item (user scrolled up, so show next item)
+      navigateToItem('next');
+    } else if (shouldNavigate && finalDeltaY > 0) {
+      // Swipe down - previous item (user scrolled down, so show previous item)
+      navigateToItem('prev');
     } else {
-      // Previous item slides down from top
-      return 'translateY(0)';
+      // Not enough distance - return to original position with spring animation
+      y.set(0);
     }
+    
+    setTouchStart(null);
   };
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] bg-black touch-none overflow-hidden"
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
+      ref={containerRef}
+      className="fixed inset-0 z-[9999] bg-black overflow-hidden"
+      style={{ touchAction: 'none', userSelect: 'none' }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={(e) => e.preventDefault()} // Prevent mouse drag
+      onMouseMove={(e) => e.preventDefault()} // Prevent mouse drag
     >
-      {/* Current Background Image/Video */}
-      {fileUrl && (
-        <div 
-          className="absolute inset-0 flex items-center justify-center transition-transform duration-400 ease-in-out"
-          style={{ transform: getSlideTransform() }}
-        >
-          {isVideo ? (
-            <video
-              src={fileUrl}
-              controls
-              loop
-              playsInline
-              className="max-w-full max-h-full w-auto h-auto object-contain"
-            />
-          ) : (
-            <img
-              src={fileUrl}
-              alt={feedItem.description || 'Progress photo'}
-              className="max-w-full max-h-full w-auto h-auto object-contain"
-            />
-          )}
-          {/* Dark overlay for better text visibility */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-        </div>
-      )}
-
-      {/* Next Background Image/Video (for smooth transition) */}
-      {isTransitioning && allItems.length > 0 && (() => {
-        const currentIndex = allItems.findIndex(item => item.id === currentItem?.id);
-        if (currentIndex === -1) return null;
-        
-        const nextIndex = slideDirection === 'up' ? currentIndex + 1 : currentIndex - 1;
-        if (nextIndex < 0 || nextIndex >= allItems.length) return null;
-        
-        const nextItem = allItems[nextIndex];
-        const nextFileUrl = nextItem.file ? getImageUrl(nextItem.file) : null;
-        const nextIsVideo = nextItem.type === 'video';
-        
-        if (!nextFileUrl) return null;
-        
-        // Calculate initial position for next item
-        const getInitialNextTransform = () => {
-          if (slideDirection === 'up') {
-            return 'translateY(100%)'; // Starts from bottom
-          } else {
-            return 'translateY(-100%)'; // Starts from top
-          }
-        };
+      {/* Previous Background Image/Video (above current) */}
+      {prevItem && prevItem.file && (() => {
+        const prevFileUrl = getImageUrl(prevItem.file);
+        const prevIsVideo = prevItem.type === 'video';
+        if (!prevFileUrl) return null;
         
         return (
-          <div 
-            className="absolute inset-0 flex items-center justify-center transition-transform duration-400 ease-in-out"
-            style={{ 
-              transform: isTransitioning ? getNextSlideTransform() : getInitialNextTransform()
-            }}
+          <motion.div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ y: prevY }}
+            key={`prev-${prevItem.id}`}
+          >
+            {prevIsVideo ? (
+              <video
+                src={prevFileUrl}
+                controls
+                loop
+                playsInline
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+              />
+            ) : (
+              <img
+                src={prevFileUrl}
+                alt={prevItem.description || 'Progress photo'}
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+          </motion.div>
+        );
+      })()}
+
+      {/* Current Background Image/Video */}
+      {currentItemToRender && currentItemToRender.file && (() => {
+        const currentFileUrl = getImageUrl(currentItemToRender.file);
+        const currentIsVideo = currentItemToRender.type === 'video';
+        if (!currentFileUrl) return null;
+        
+        return (
+          <motion.div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ y: currentY }}
+            key={`current-${currentItemToRender.id}`}
+          >
+            {currentIsVideo ? (
+              <video
+                src={currentFileUrl}
+                controls
+                loop
+                playsInline
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+              />
+            ) : (
+              <img
+                src={currentFileUrl}
+                alt={currentItemToRender.description || 'Progress photo'}
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+          </motion.div>
+        );
+      })()}
+
+      {/* Next Background Image/Video (below current) */}
+      {nextItem && nextItem.file && (() => {
+        const nextFileUrl = getImageUrl(nextItem.file);
+        const nextIsVideo = nextItem.type === 'video';
+        if (!nextFileUrl) return null;
+        
+        return (
+          <motion.div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ y: nextY }}
+            key={`next-${nextItem.id}`}
           >
             {nextIsVideo ? (
               <video
@@ -396,116 +502,121 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
                 className="max-w-full max-h-full w-auto h-auto object-contain"
               />
             )}
-            {/* Dark overlay for better text visibility */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-          </div>
+          </motion.div>
         );
       })()}
 
-      {/* Top Bar */}
-      <div 
-        className="absolute top-0 left-0 right-0 z-10 flex items-center p-4 transition-transform duration-400 ease-in-out"
-        style={{ transform: getSlideTransform() }}
-      >
-        {/* Back Button */}
-        <button
-          onClick={onClose}
-          className="bg-black/50 backdrop-blur-sm rounded-full p-2 text-white hover:bg-black/70 transition-colors touch-manipulation"
-          aria-label="Назад"
+      {/* Top Bar - only show for current item */}
+      {currentItemToRender && (
+        <motion.div 
+          className="absolute top-0 left-0 right-0 z-10 flex items-center p-4 pointer-events-auto"
+          style={{ y: currentY }}
         >
-          <ArrowLeft className="w-6 h-6" />
-        </button>
-      </div>
+          {/* Back Button */}
+          <button
+            onClick={onClose}
+            className="bg-black/50 backdrop-blur-sm rounded-full p-2 text-white hover:bg-black/70 transition-colors touch-manipulation"
+            aria-label="Назад"
+          >
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+        </motion.div>
+      )}
 
-      {/* Bottom Info */}
-      <div 
-        className="absolute bottom-0 left-0 right-0 z-10 p-4 pb-8 transition-transform duration-400 ease-in-out"
-        style={{ transform: getSlideTransform() }}
-      >
-        <div className="flex items-end justify-between">
-          {/* Left: User Info */}
-          <div className="flex-1 min-w-0 pr-4">
-            <div className="flex items-center space-x-3 mb-3">
-              <Link 
-                to={`/users/${feedItem.user.id}/profile`}
-                className="flex-shrink-0"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <Avatar
-                  src={feedItem.user.profile?.avatar}
-                  firstName={feedItem.user.first_name}
-                  lastName={feedItem.user.last_name}
-                  username={feedItem.user.username}
-                  size="md"
-                  className="border-2 border-white"
-                />
-              </Link>
-              <div className="flex-1 min-w-0">
+      {/* Bottom Info - only show for current item */}
+      {currentItemToRender && (
+        <motion.div 
+          className="absolute bottom-0 left-0 right-0 z-10 p-4 pb-8 pointer-events-auto"
+          style={{ y: currentY }}
+        >
+          <div className="flex items-end justify-between">
+            {/* Left: User Info */}
+            <div className="flex-1 min-w-0 pr-4">
+              <div className="flex items-center space-x-3 mb-3">
                 <Link 
-                  to={`/users/${feedItem.user.id}/profile`}
-                  className="block hover:underline"
+                  to={`/users/${currentItemToRender.user.id}/profile`}
+                  className="flex-shrink-0"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="text-white font-semibold text-lg truncate">
-                    {userName}
-                  </div>
+                  <Avatar
+                    src={currentItemToRender.user.profile?.avatar}
+                    firstName={currentItemToRender.user.first_name}
+                    lastName={currentItemToRender.user.last_name}
+                    username={currentItemToRender.user.username}
+                    size="md"
+                    className="border-2 border-white"
+                  />
                 </Link>
-                <div className="text-white/90 text-sm mt-1">
-                  {feedItem.daily_progress_date 
-                    ? formatDate(feedItem.daily_progress_date, 'dd.MM.yyyy')
-                    : formatDate(feedItem.uploaded_at, 'dd.MM.yyyy')
-                  } • {feedItem.activity_name} • {feedItem.quantity}
+                <div className="flex-1 min-w-0">
+                  <Link 
+                    to={`/users/${currentItemToRender.user.id}/profile`}
+                    className="block hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="text-white font-semibold text-lg truncate">
+                      {currentItemToRender.user.first_name && currentItemToRender.user.last_name
+                        ? `${currentItemToRender.user.first_name} ${currentItemToRender.user.last_name}`
+                        : currentItemToRender.user.username}
+                    </div>
+                  </Link>
+                  <div className="text-white/90 text-sm mt-1">
+                    {currentItemToRender.daily_progress_date 
+                      ? formatDate(currentItemToRender.daily_progress_date, 'dd.MM.yyyy')
+                      : formatDate(currentItemToRender.uploaded_at, 'dd.MM.yyyy')
+                    } • {currentItemToRender.activity_name} • {currentItemToRender.quantity}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Description */}
-            {feedItem.description && (
-              <p className="text-white text-sm mb-2 line-clamp-2">
-                {feedItem.description}
-              </p>
-            )}
-          </div>
-
-          {/* Right: Actions (Like and Comments) */}
-          <div className="flex flex-col items-center space-y-4">
-            {/* Like Button */}
-            <div className="flex flex-col items-center">
-              <button
-                onClick={handleToggleKudo}
-                disabled={isTogglingKudo}
-                className={`bg-black/50 backdrop-blur-sm rounded-full p-3 text-white hover:bg-black/70 transition-colors touch-manipulation ${
-                  hasKudoed ? 'text-red-500' : ''
-                }`}
-                aria-label="Лайк"
-              >
-                <Heart className={`w-6 h-6 ${hasKudoed ? 'fill-current' : ''}`} />
-              </button>
-              {kudosCount > 0 && (
-                <span className="text-white text-xs mt-1 font-medium">
-                  {kudosCount}
-                </span>
+              {/* Description */}
+              {currentItemToRender.description && (
+                <p className="text-white text-sm mb-2 line-clamp-2">
+                  {currentItemToRender.description}
+                </p>
               )}
             </div>
 
-            {/* Comments Button */}
-            <div className="flex flex-col items-center">
-              <button
-                onClick={() => setShowComments(!showComments)}
-                className="bg-black/50 backdrop-blur-sm rounded-full p-3 text-white hover:bg-black/70 transition-colors touch-manipulation"
-                aria-label="Комментарии"
-              >
-                <MessageCircle className="w-6 h-6" />
-              </button>
-              {feedItem.comments_count > 0 && (
-                <span className="text-white text-xs mt-1 font-medium">
-                  {feedItem.comments_count}
-                </span>
-              )}
+            {/* Right: Actions (Like and Comments) */}
+            <div className="flex flex-col items-center space-y-4">
+              {/* Like Button */}
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={handleToggleKudo}
+                  disabled={isTogglingKudo}
+                  className={`bg-black/50 backdrop-blur-sm rounded-full p-3 text-white hover:bg-black/70 transition-colors touch-manipulation ${
+                    hasKudoed ? 'text-red-500' : ''
+                  }`}
+                  aria-label="Лайк"
+                >
+                  <Heart className={`w-6 h-6 ${hasKudoed ? 'fill-current' : ''}`} />
+                </button>
+                {kudosCount > 0 && (
+                  <span className="text-white text-xs mt-1 font-medium">
+                    {kudosCount}
+                  </span>
+                )}
+              </div>
+
+              {/* Comments Button */}
+              <div className="flex flex-col items-center">
+                <button
+                  onClick={() => setShowComments(!showComments)}
+                  className="bg-black/50 backdrop-blur-sm rounded-full p-3 text-white hover:bg-black/70 transition-colors touch-manipulation"
+                  aria-label="Комментарии"
+                >
+                  <MessageCircle className="w-6 h-6" />
+                </button>
+                {currentItemToRender.comments_count > 0 && (
+                  <span className="text-white text-xs mt-1 font-medium">
+                    {currentItemToRender.comments_count}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      )}
 
       {/* Comments Panel */}
       {showComments && (
