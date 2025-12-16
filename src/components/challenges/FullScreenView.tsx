@@ -14,6 +14,9 @@ interface FullScreenViewProps {
   feedItem: FeedItem | null;
   allItems?: FeedItem[];
   onItemChange?: (item: FeedItem) => void;
+  onLoadMore?: () => Promise<void>;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 export const FullScreenView: React.FC<FullScreenViewProps> = ({
@@ -22,6 +25,9 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   feedItem,
   allItems = [],
   onItemChange,
+  onLoadMore,
+  hasMore = false,
+  isLoadingMore = false,
 }) => {
   const { user } = useAuthStore();
   const [comments, setComments] = useState<Comment[]>([]);
@@ -38,6 +44,8 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'up' | 'down' | null>(null);
+  const [currentItem, setCurrentItem] = useState<FeedItem | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -53,6 +61,11 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
 
   useEffect(() => {
     if (isOpen && feedItem) {
+      if (currentItem?.id !== feedItem.id) {
+        // Item changed - reset transition state
+        setCurrentItem(feedItem);
+        setSlideDirection(null);
+      }
       setKudosCount(feedItem.kudos_count);
       setHasKudoed(feedItem.has_user_kudoed);
       if (showComments) {
@@ -74,6 +87,8 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
       setKudosCount(0);
       setHasKudoed(false);
       setShowComments(false);
+      setCurrentItem(null);
+      setSlideDirection(null);
     }
   }, [isOpen, feedItem]);
 
@@ -210,7 +225,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     }
   };
 
-  const navigateToItem = (direction: 'next' | 'prev') => {
+  const navigateToItem = async (direction: 'next' | 'prev') => {
     if (!feedItem || allItems.length === 0 || isTransitioning) return;
 
     const currentIndex = allItems.findIndex(item => item.id === feedItem.id);
@@ -219,7 +234,22 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     let newIndex: number;
     if (direction === 'next') {
       newIndex = currentIndex + 1;
-      if (newIndex >= allItems.length) return; // Already at last item
+      
+      // If at last item and has more, load more
+      if (newIndex >= allItems.length) {
+        if (hasMore && onLoadMore && !isLoadingMore) {
+          await onLoadMore();
+          // After loading, try again with updated list
+          const updatedIndex = allItems.findIndex(item => item.id === feedItem.id);
+          if (updatedIndex !== -1 && updatedIndex + 1 < allItems.length) {
+            newIndex = updatedIndex + 1;
+          } else {
+            return; // Still at last item after loading
+          }
+        } else {
+          return; // Already at last item and no more to load
+        }
+      }
     } else {
       newIndex = currentIndex - 1;
       if (newIndex < 0) return; // Already at first item
@@ -229,6 +259,7 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     if (!newItem) return;
 
     setIsTransitioning(true);
+    setSlideDirection(direction === 'next' ? 'up' : 'down');
     setShowComments(false);
     setComments([]);
     setNewComment('');
@@ -244,7 +275,8 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     // Reset transition after animation
     setTimeout(() => {
       setIsTransitioning(false);
-    }, 300);
+      setSlideDirection(null);
+    }, 400);
   };
 
   if (!isOpen || !feedItem) return null;
@@ -258,16 +290,47 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     return user && comment.user.id === user.id;
   };
 
+  // Calculate transform for slide animation
+  const getSlideTransform = () => {
+    if (!isTransitioning || !slideDirection) return 'translateY(0)';
+    if (slideDirection === 'up') {
+      return 'translateY(-100%)';
+    } else {
+      return 'translateY(100%)';
+    }
+  };
+
+  const getNextSlideTransform = () => {
+    if (!isTransitioning || !slideDirection) {
+      // Hide next element when not transitioning
+      if (slideDirection === 'up') {
+        return 'translateY(100%)';
+      } else {
+        return 'translateY(-100%)';
+      }
+    }
+    if (slideDirection === 'up') {
+      // Next item slides up from bottom
+      return 'translateY(0)';
+    } else {
+      // Previous item slides down from top
+      return 'translateY(0)';
+    }
+  };
+
   return (
     <div 
-      className="fixed inset-0 z-[9999] bg-black touch-none"
+      className="fixed inset-0 z-[9999] bg-black touch-none overflow-hidden"
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
       onTouchEnd={onTouchEnd}
     >
-      {/* Background Image/Video */}
+      {/* Current Background Image/Video */}
       {fileUrl && (
-        <div className={`absolute inset-0 transition-opacity duration-300 ${isTransitioning ? 'opacity-0' : 'opacity-100'} flex items-center justify-center`}>
+        <div 
+          className="absolute inset-0 flex items-center justify-center transition-transform duration-400 ease-in-out"
+          style={{ transform: getSlideTransform() }}
+        >
           {isVideo ? (
             <video
               src={fileUrl}
@@ -275,14 +338,12 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
               loop
               playsInline
               className="max-w-full max-h-full w-auto h-auto object-contain"
-              key={feedItem.id} // Force re-render on item change
             />
           ) : (
             <img
               src={fileUrl}
               alt={feedItem.description || 'Progress photo'}
               className="max-w-full max-h-full w-auto h-auto object-contain"
-              key={feedItem.id} // Force re-render on item change
             />
           )}
           {/* Dark overlay for better text visibility */}
@@ -290,8 +351,62 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
         </div>
       )}
 
+      {/* Next Background Image/Video (for smooth transition) */}
+      {isTransitioning && allItems.length > 0 && (() => {
+        const currentIndex = allItems.findIndex(item => item.id === currentItem?.id);
+        if (currentIndex === -1) return null;
+        
+        const nextIndex = slideDirection === 'up' ? currentIndex + 1 : currentIndex - 1;
+        if (nextIndex < 0 || nextIndex >= allItems.length) return null;
+        
+        const nextItem = allItems[nextIndex];
+        const nextFileUrl = nextItem.file ? getImageUrl(nextItem.file) : null;
+        const nextIsVideo = nextItem.type === 'video';
+        
+        if (!nextFileUrl) return null;
+        
+        // Calculate initial position for next item
+        const getInitialNextTransform = () => {
+          if (slideDirection === 'up') {
+            return 'translateY(100%)'; // Starts from bottom
+          } else {
+            return 'translateY(-100%)'; // Starts from top
+          }
+        };
+        
+        return (
+          <div 
+            className="absolute inset-0 flex items-center justify-center transition-transform duration-400 ease-in-out"
+            style={{ 
+              transform: isTransitioning ? getNextSlideTransform() : getInitialNextTransform()
+            }}
+          >
+            {nextIsVideo ? (
+              <video
+                src={nextFileUrl}
+                controls
+                loop
+                playsInline
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+              />
+            ) : (
+              <img
+                src={nextFileUrl}
+                alt={nextItem.description || 'Progress photo'}
+                className="max-w-full max-h-full w-auto h-auto object-contain"
+              />
+            )}
+            {/* Dark overlay for better text visibility */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+          </div>
+        );
+      })()}
+
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 z-10 flex items-center p-4">
+      <div 
+        className="absolute top-0 left-0 right-0 z-10 flex items-center p-4 transition-transform duration-400 ease-in-out"
+        style={{ transform: getSlideTransform() }}
+      >
         {/* Back Button */}
         <button
           onClick={onClose}
@@ -303,7 +418,10 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
       </div>
 
       {/* Bottom Info */}
-      <div className="absolute bottom-0 left-0 right-0 z-10 p-4 pb-8">
+      <div 
+        className="absolute bottom-0 left-0 right-0 z-10 p-4 pb-8 transition-transform duration-400 ease-in-out"
+        style={{ transform: getSlideTransform() }}
+      >
         <div className="flex items-end justify-between">
           {/* Left: User Info */}
           <div className="flex-1 min-w-0 pr-4">

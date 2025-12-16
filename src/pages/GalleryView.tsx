@@ -157,6 +157,9 @@ export const GalleryView: React.FC = () => {
         feedItem={selectedFeedItem}
         allItems={feedItems}
         onItemChange={handleItemChange}
+        onLoadMore={loadMoreFeed}
+        hasMore={!!feedNextPage}
+        isLoadingMore={isLoadingFeed}
       />
     </div>
   );
