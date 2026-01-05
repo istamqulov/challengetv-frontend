@@ -23,7 +23,7 @@ import type {
   Participant,
   ChallengeList
 } from '@/types/api';
-import { cn, getErrorMessage, formatLocalDate } from '@/lib/utils';
+import { cn, getErrorMessage, formatLocalDate, isChallengeCompleted, formatDate } from '@/lib/utils';
 
 type VideoMetadata = {
   duration: number;
@@ -592,6 +592,48 @@ export const SendProgressPage: React.FC = () => {
             <Button onClick={() => navigate('/challenges')}>
               Смотреть челленджи
             </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if challenge has ended
+  const challengeHasEnded = challenge && isChallengeCompleted(challenge.end_date);
+
+  if (challengeHasEnded) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-4 md:py-8">
+        <Card>
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl md:text-3xl font-bold flex items-center">
+              <Upload className="w-7 h-7 md:w-8 md:h-8 mr-3 text-primary-600" />
+              Отправить прогресс
+            </h1>
+            {selectedChallengeSlug && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(`/challenges/${selectedChallengeSlug}`)}
+                className="flex items-center space-x-1"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Вернуться в челлендж</span>
+                <span className="sm:hidden">Назад</span>
+              </Button>
+            )}
+          </div>
+          <div className="text-center py-12">
+            <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Челлендж завершен</h3>
+            <p className="text-gray-600 mb-4">
+              Время отправки прогресса истекло. Челлендж завершился {challenge && formatDate(challenge.end_date)}.
+            </p>
+            {selectedChallengeSlug && (
+              <Button onClick={() => navigate(`/challenges/${selectedChallengeSlug}`)}>
+                Посмотреть результаты
+              </Button>
+            )}
           </div>
         </Card>
       </div>

@@ -673,3 +673,8 @@ export const FullScreenView: React.FC<FullScreenViewProps> = ({
     </div>
   );
 };
+
+
+
+
+

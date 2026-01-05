@@ -76,3 +76,8 @@ export const GalleryItem: React.FC<GalleryItemProps> = ({ item, onClick }) => {
     </div>
   );
 };
+
+
+
+
+

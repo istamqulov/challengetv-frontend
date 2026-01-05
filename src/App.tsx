@@ -16,6 +16,7 @@ import { UserProfilePage } from '@/pages/UserProfilePage';
 import { ParticipantProgressPage } from '@/pages/ParticipantProgressPage';
 import { SendProgressPage } from '@/pages/SendProgressPage';
 import { GalleryView } from '@/pages/GalleryView';
+import { CertificatePage } from '@/pages/CertificatePage';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useAuthStore } from '@/stores/authStore';
 import { initNotificationService } from '@/lib/notificationService';
@@ -104,6 +105,14 @@ function App() {
             element={
               <Layout>
                 <ParticipantProgressPage />
+              </Layout>
+            }
+          />
+          <Route
+            path="/challenges/:slug/participants/:participantId/certificate"
+            element={
+              <Layout>
+                <CertificatePage />
               </Layout>
             }
           />

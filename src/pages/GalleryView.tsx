@@ -164,3 +164,8 @@ export const GalleryView: React.FC = () => {
     </div>
   );
 };
+
+
+
+
+
